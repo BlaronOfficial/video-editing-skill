@@ -1,0 +1,28 @@
+# Per-user data: brand kits, style profiles, learned preferences, CapCut calibration,
+# asset index, API keys. `git pull` never touches this folder.
+/personal/
+
+# Downloaded fonts, models, renderer caches
+/.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Test footage and renders made while developing the skill
+/tests/footage/
+/tests/out/

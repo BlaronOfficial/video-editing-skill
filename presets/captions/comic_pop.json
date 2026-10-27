@@ -1,0 +1,4 @@
+{"name": "comic_pop", "description": "Playful rounded display font, chunky outline, word pops. Kids, comedy, reaction content.",
+ "mode": "word", "max_words": 1, "font": "Luckiest Guy", "font_bangla": "Atma", "size": 0.12, "color": "#FFFFFF",
+ "highlight": "#FFD23F", "stroke": "#111111", "stroke_width": 0.14, "shadow": 0.07, "uppercase": true, "pop_scale": 1.25,
+ "animation": "pop", "y": -0.30, "capcut": {"intro": "pop"}}

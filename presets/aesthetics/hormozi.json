@@ -1,0 +1,48 @@
+{
+  "name": "hormozi",
+  "description": "Max-retention talking head: zero dead air, word captions, emoji and SFX on every beat, frequent punch-ins.",
+  "captions": {
+    "style": "hormozi"
+  },
+  "color": {
+    "preset": "punchy"
+  },
+  "pacing": {
+    "max_pause": 0.12,
+    "avg_shot_s": 1.4,
+    "punch_in": {
+      "every_s": 3,
+      "scale": 1.15,
+      "ease": "hold"
+    }
+  },
+  "music": {
+    "mood": "upbeat corporate, driving",
+    "volume": 0.12
+  },
+  "sfx": {
+    "density": "very_high",
+    "kinds": [
+      "pop",
+      "whoosh",
+      "click",
+      "ding"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "emoji_pop",
+      "text_punch",
+      "counter",
+      "list_reveal",
+      "progress_bar"
+    ],
+    "accent": "#39FF6A",
+    "accent2": "#FFE14D"
+  },
+  "transitions": [
+    "hard cut"
+  ],
+  "broll": "literal visuals for every concrete noun; 1-2 s each",
+  "notes": "Cut every breath. Alternate punch-in levels (1.0 / 1.15) between sentences. Emoji pops on emotions."
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- lower_third: name + role with an accent bar. data: {name, title, align: left|center, y: 0.78 (0..1 from top),
+     style: bar|glass|minimal, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .lt { position: absolute; left: 7vw; display: flex; flex-direction: column; gap: 1.2vmin; }
+  .lt.center { left: 50%; transform: translateX(-50%); align-items: center; text-align: center; }
+  .row { position: relative; overflow: hidden; padding: 0.6vmin 2.4vmin 0.6vmin 2.4vmin; }
+  .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--accent); transform-origin: left center; }
+  .name { position: relative; font-weight: 800; font-size: 6vmin; color: var(--ink); letter-spacing: -0.02em; white-space: nowrap; }
+  .title { position: relative; font-weight: 600; font-size: 3.4vmin; color: var(--paper); letter-spacing: 0.04em;
+           text-transform: uppercase; white-space: nowrap; text-shadow: 0 0.3vmin 1.2vmin rgba(0,0,0,.55); }
+  .glass .row:first-child { background: rgba(15,15,20,.55); backdrop-filter: blur(12px); border-radius: 1.6vmin; }
+  .glass .bar { width: 0.8vmin; border-radius: 1vmin; }
+  .glass .name { color: var(--paper); }
+  .minimal .bar { display: none; }
+  .minimal .name { color: var(--paper); text-shadow: 0 0.4vmin 1.6vmin rgba(0,0,0,.6); }
+</style></head>
+<body><div id="stage" data-composition-id="main">
+  <div class="lt" id="lt"><div class="row"><div class="bar" id="bar"></div><div class="name" id="name"></div></div>
+  <div class="row"><div class="title" id="title"></div></div></div>
+</div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ name: "Your Name", title: "Founder · Studio", align: "left", y: 0.76, style: "bar", duration: 4 });
+V.brand(d.brand || {});
+const lt = document.getElementById("lt");
+lt.classList.add(d.style);
+if (d.align === "center") lt.classList.add("center");
+lt.style.top = (d.y * 100) + "%";
+const nameEl = document.getElementById("name"), titleEl = document.getElementById("title");
+nameEl.textContent = d.name; titleEl.textContent = d.title;
+if (V.isBangla(d.name)) nameEl.classList.add("bn");
+if (V.isBangla(d.title)) titleEl.classList.add("bn");
+document.getElementById("stage").dataset.duration = d.duration;
+
+const tl = V.timeline("main");
+const out = Math.max(1.2, d.duration - 0.55);
+tl.from("#bar", { scaleX: 0, duration: 0.45, ease: "expo.out" }, 0.05)
+  .from(nameEl, { yPercent: 110, duration: 0.55, ease: "expo.out" }, 0.18)
+  .from(titleEl, { yPercent: 120, opacity: 0, duration: 0.5, ease: "expo.out" }, 0.32)
+  .to(nameEl, { yPercent: -110, duration: 0.35, ease: "power3.in" }, out)
+  .to(titleEl, { yPercent: -120, opacity: 0, duration: 0.3, ease: "power3.in" }, out + 0.05)
+  .to("#bar", { scaleX: 0, transformOrigin: "right center", duration: 0.35, ease: "power3.in" }, out + 0.12);
+</script></body></html>

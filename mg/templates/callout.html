@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- callout: label pops, curved arrow draws to a target, ring pulses on the target. Coordinates are 0..1 of the frame.
+     data: {label, from: [0.25, 0.3], to: [0.62, 0.55], curve: 0.25, ring: true, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .arrow { fill: none; stroke: var(--accent); stroke-width: 1.1vmin; stroke-linecap: round; stroke-linejoin: round;
+           filter: drop-shadow(0 .4vmin .8vmin rgba(0,0,0,.45)); }
+  .ring { fill: none; stroke: var(--accent); stroke-width: .8vmin; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: var(--accent); color: var(--ink);
+           font-weight: 800; font-size: 4.4vmin; padding: 1.2vmin 2.4vmin; border-radius: 1.4vmin; white-space: nowrap;
+           box-shadow: 0 1vmin 2.4vmin rgba(0,0,0,.35); }
+</style></head>
+<body><div id="stage" data-composition-id="main">
+  <svg id="svg"><path class="arrow" id="path"/><path class="arrow" id="head"/><circle class="ring" id="ring" r="10"/></svg>
+  <div class="label" id="label"></div>
+</div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ label: "Look here", from: [0.28, 0.32], to: [0.62, 0.56], curve: 0.25, ring: true, duration: 3 });
+V.brand(d.brand || {});
+const W = innerWidth, H = innerHeight;
+const [x1, y1] = [d.from[0] * W, d.from[1] * H], [x2, y2] = [d.to[0] * W, d.to[1] * H];
+const mx = (x1 + x2) / 2 - (y2 - y1) * d.curve, my = (y1 + y2) / 2 + (x2 - x1) * d.curve;
+const path = document.getElementById("path"), head = document.getElementById("head"), ring = document.getElementById("ring");
+path.setAttribute("d", `M${x1} ${y1 + 10} Q${mx} ${my} ${x2} ${y2}`);
+const ang = Math.atan2(y2 - my, x2 - mx), L = Math.min(W, H) * 0.045;
+head.setAttribute("d", `M${x2 - L * Math.cos(ang - 0.5)} ${y2 - L * Math.sin(ang - 0.5)} L${x2} ${y2} L${x2 - L * Math.cos(ang + 0.5)} ${y2 - L * Math.sin(ang + 0.5)}`);
+ring.setAttribute("cx", x2); ring.setAttribute("cy", y2); ring.setAttribute("r", Math.min(W, H) * 0.06);
+const label = document.getElementById("label");
+label.textContent = d.label; if (V.isBangla(d.label)) label.classList.add("bn");
+label.style.left = x1 + "px"; label.style.top = y1 + "px";
+document.getElementById("stage").dataset.duration = d.duration;
+
+const len = path.getTotalLength(), hl = head.getTotalLength();
+gsap.set(path, { strokeDasharray: len, strokeDashoffset: len });
+gsap.set(head, { strokeDasharray: hl, strokeDashoffset: hl });
+const tl = V.timeline("main");
+tl.from(label, { scale: 0, opacity: 0, duration: 0.45, ease: "back.out(2.4)", transformOrigin: "50% 100%" }, 0.05)
+  .to(path, { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" }, 0.3)
+  .to(head, { strokeDashoffset: 0, duration: 0.18, ease: "power2.out" }, 0.78);
+if (d.ring) {
+  tl.from(ring, { scale: 0.2, opacity: 0, transformOrigin: "50% 50%", duration: 0.4, ease: "back.out(2)" }, 0.85)
+    .to(ring, { scale: 1.25, opacity: 0.4, transformOrigin: "50% 50%", duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 1.25);
+} else ring.remove();
+tl.to(["#svg", label], { opacity: 0, duration: 0.3 }, Math.max(1.4, d.duration - 0.3));
+</script></body></html>

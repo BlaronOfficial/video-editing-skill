@@ -1,0 +1,20 @@
+{
+  "lower_third":   {"use": "Introduce a person/brand on first appearance.", "duration": 4, "data": {"name": "str", "title": "str", "align": "left|center", "y": "0..1", "style": "bar|glass|minimal"}},
+  "title_card":    {"use": "Hook headline, topic intro, section opener.", "duration": 3.5, "data": {"kicker": "str", "title": "str", "subtitle": "str", "highlight": "[words]", "y": "0..1", "panel": "bool"}},
+  "kinetic_text":  {"use": "Punchy spoken line as big typography, words land on the beat (pass word times from the transcript).", "duration": 3, "data": {"text": "str", "times": "[s per word]", "emphasis": "[words]", "emoji": "str", "font": "str", "uppercase": "bool", "y": "0..1"}},
+  "callout":       {"use": "Point at something in frame: product, UI, detail.", "duration": 3, "data": {"label": "str", "from": "[x,y]", "to": "[x,y]", "curve": "num", "ring": "bool"}},
+  "counter":       {"use": "Numbers, money, growth, stats.", "duration": 3, "data": {"from": "num", "to": "num", "prefix": "str", "suffix": "str", "decimals": "int", "label": "str", "y": "0..1"}},
+  "list_reveal":   {"use": "Steps, tips, checklists while the speaker lists them (pass item times).", "duration": 5, "data": {"heading": "str", "items": "[str]", "times": "[s]", "panel": "bool", "y": "0..1"}},
+  "quote_card":    {"use": "Quotes, testimonials, key statements.", "duration": 5, "data": {"quote": "str", "author": "str", "serif": "bool", "y": "0..1"}},
+  "progress_bar":  {"use": "Retention bar for the whole short (set duration = video length).", "duration": "video", "data": {"position": "top|bottom", "thickness": "vmin", "ticks": "[0..1]"}},
+  "subscribe_cta": {"use": "Follow/subscribe call-to-action with click animation.", "duration": 3.2, "data": {"label": "str", "done": "str", "handle": "str", "bell": "bool", "y": "0..1"}},
+  "logo_sting":    {"use": "Brand intro/outro, end card.", "duration": 2.6, "data": {"logo": "abs path to png/svg", "text": "str (if no logo)", "tagline": "str", "bg": "null|#hex"}},
+  "emoji_pop":     {"use": "Reaction beats, humour, emphasis.", "duration": 1.8, "data": {"emoji": "str", "x": "0..1", "y": "0..1", "size": "num", "particles": "int"}},
+  "chapter_title": {"use": "Long-form chapter/section headers.", "duration": 2.8, "data": {"number": "str", "title": "str", "align": "left|center", "y": "0..1"}},
+  "bar_chart":     {"use": "Comparisons, before/after results.", "duration": 4, "data": {"title": "str", "bars": "[{label,value}]", "highlight": "int", "unit": "str", "y": "0..1"}},
+  "highlight_box": {"use": "Screen recordings / UI: box and dim a region.", "duration": 3, "data": {"box": "[x,y,w,h] 0..1", "label": "str", "dim": "0..1", "radius": "vmin"}},
+  "shape_wipe":    {"use": "Stylised transition centred on a cut (frame covered at duration/2).", "duration": 0.8, "data": {"style": "bars|circle|diagonal", "colors": "[#hex]", "direction": "left|right|up"}},
+  "text_punch":    {"use": "One-word slam for a big beat (FREE, BOOM, 3X).", "duration": 1.2, "data": {"text": "str", "y": "0..1", "color": "#hex", "outline": "bool", "rotate": "deg", "flash": "bool"}},
+  "notification":  {"use": "Phone banner hook (message, sale, alert). Generic styling only.", "duration": 3, "data": {"app": "str", "icon": "emoji", "title": "str", "body": "str", "time": "str", "y": "0..1"}},
+  "countdown":     {"use": "3-2-1 reveals, timers.", "duration": 4, "data": {"from": "int", "final": "str", "y": "0..1"}}
+}

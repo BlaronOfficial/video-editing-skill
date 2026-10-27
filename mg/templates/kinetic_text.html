@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- kinetic_text: words land one by one (evenly or at given times); emphasis words get the accent and scale.
+     data: {text, times: [0.0, 0.3, ...] (optional, per word), emphasis: ["word"], emoji: "🔥",
+            y: 0.5, size: 1.0, font: "Poppins"|"Anton"|..., uppercase: true, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .box { position: absolute; left: 6vw; right: 6vw; text-align: center; transform: translateY(-50%); }
+  .txt { font-weight: 900; font-size: 10vmin; line-height: 1.08; color: var(--paper); letter-spacing: -0.02em;
+         text-shadow: 0 .5vmin 0 rgba(0,0,0,.35), 0 1vmin 3vmin rgba(0,0,0,.45); }
+  .txt .em { color: var(--accent); }
+  .emoji { font-size: 14vmin; display: inline-block; margin-top: 1vmin; }
+</style></head>
+<body><div id="stage" data-composition-id="main">
+  <div class="box" id="box"><div class="txt" id="txt"></div><div class="emoji" id="emoji"></div></div>
+</div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ text: "Stop editing like it's 2015", times: null, emphasis: ["Stop"], emoji: "", y: 0.5, size: 1, font: "",
+                   uppercase: true, duration: 3 });
+V.brand(d.brand || {});
+const box = document.getElementById("box"), txt = document.getElementById("txt"), em = document.getElementById("emoji");
+box.style.top = (d.y * 100) + "%";
+if (d.font) txt.style.fontFamily = `"${d.font}", "Hind Siliguri", sans-serif`;
+txt.textContent = d.uppercase && !V.isBangla(d.text) ? d.text.toUpperCase() : d.text;
+const { words } = V.split(txt);
+const emph = (d.emphasis || []).map((w) => w.toLowerCase());
+words.forEach((w) => { if (emph.includes(w.textContent.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ""))) w.classList.add("em"); });
+V.fit(txt, { max: Math.round(Math.min(innerWidth, innerHeight) * 0.12 * d.size), width: box.clientWidth, height: innerHeight * 0.5 });
+if (d.emoji) em.textContent = d.emoji; else em.remove();
+document.getElementById("stage").dataset.duration = d.duration;
+
+const tl = V.timeline("main");
+const step = Math.min(0.22, (d.duration * 0.55) / Math.max(1, words.length));
+words.forEach((w, i) => {
+  const at = d.times && d.times[i] != null ? d.times[i] : 0.05 + i * step;
+  const big = w.classList.contains("em");
+  tl.from(w, { scale: big ? 1.8 : 0.4, opacity: 0, y: big ? 0 : 40, rotation: big ? -6 : 0, duration: big ? 0.42 : 0.3,
+               ease: big ? "back.out(3)" : "back.out(2)" }, at);
+});
+if (d.emoji) tl.from(em, { scale: 0, rotation: -30, duration: 0.5, ease: "elastic.out(1, 0.45)" },
+  (d.times ? d.times[d.times.length - 1] : words.length * step) + 0.1);
+tl.to(box, { scale: 0.9, opacity: 0, duration: 0.25, ease: "power2.in" }, Math.max(0.8, d.duration - 0.3));
+</script></body></html>

@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Run the vedit engine from any working directory: ./vedit <command> [args]
+DIR="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONUTF8=1
+export PYTHONIOENCODING=utf-8
+exec uv run --quiet --project "$DIR/scripts" vedit "$@"

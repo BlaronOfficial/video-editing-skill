@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- quote_card: glass card, oversized quote mark, word-staggered quote, author line.
+     data: {quote, author, y: 0.5, serif: true, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .card { position: absolute; left: 7vw; right: 7vw; transform: translateY(-50%); padding: 7vmin 6vmin 5vmin; border-radius: 3.4vmin;
+          background: rgba(14,14,18,.72); backdrop-filter: blur(16px); box-shadow: 0 2vmin 6vmin rgba(0,0,0,.45); }
+  .mark { position: absolute; left: 4vmin; top: -6vmin; font-family: "DM Serif Display", serif; font-size: 26vmin; line-height: 1;
+          color: var(--accent); }
+  .q { font-family: "Instrument Serif", "DM Serif Display", serif; font-size: 7.4vmin; line-height: 1.18; color: var(--paper); }
+  .q.sans { font-family: var(--font-display); font-weight: 700; font-size: 6.2vmin; }
+  .a { margin-top: 3.4vmin; font-weight: 600; font-size: 3.6vmin; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; }
+  .a::before { content: ""; display: inline-block; width: 6vmin; height: .5vmin; background: var(--accent); vertical-align: middle; margin-right: 2vmin; }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="card" id="card"><div class="mark" id="mark">“</div>
+  <div class="q" id="q"></div><div class="a" id="a"></div></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ quote: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci", y: 0.5, serif: true, duration: 5 });
+V.brand(d.brand || {});
+const card = document.getElementById("card"); card.style.top = (d.y * 100) + "%";
+const q = document.getElementById("q"), a = document.getElementById("a");
+q.textContent = d.quote; if (!d.serif || V.isBangla(d.quote)) q.classList.add("sans");
+if (d.author) a.textContent = d.author; else a.remove();
+const { words } = V.split(q);
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+const step = Math.min(0.09, (d.duration * 0.5) / Math.max(1, words.length));
+tl.from(card, { y: 60, opacity: 0, scale: 0.96, duration: 0.6, ease: "expo.out" }, 0)
+  .from("#mark", { scale: 0, rotation: -20, duration: 0.6, ease: "back.out(2)" }, 0.15)
+  .from(words, { opacity: 0, y: 18, filter: "blur(6px)", duration: 0.45, ease: "power3.out", stagger: step }, 0.3)
+  .from(a, { x: -30, opacity: 0, duration: 0.45, ease: "power3.out" }, 0.4 + words.length * step)
+  .to(card, { opacity: 0, y: -40, duration: 0.4, ease: "power2.in" }, Math.max(2, d.duration - 0.4));
+</script></body></html>

@@ -1,0 +1,46 @@
+{
+  "name": "bangla_creator",
+  "description": "Bangla / Banglish talking-head shorts: Bangla-first captions, warm grade, punchy pacing.",
+  "captions": {
+    "style": "bangla_bold"
+  },
+  "color": {
+    "preset": "warm_cinematic"
+  },
+  "pacing": {
+    "max_pause": 0.22,
+    "avg_shot_s": 1.8,
+    "punch_in": {
+      "every_s": 4,
+      "scale": 1.1,
+      "ease": "out"
+    }
+  },
+  "music": {
+    "mood": "upbeat, modern desi / lo-fi",
+    "volume": 0.16
+  },
+  "sfx": {
+    "density": "medium",
+    "kinds": [
+      "pop",
+      "whoosh"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "kinetic_text",
+      "text_punch",
+      "list_reveal",
+      "counter"
+    ],
+    "accent": "#FFE14D",
+    "fontBangla": "Hind Siliguri"
+  },
+  "transitions": [
+    "hard cut",
+    "zoom_in"
+  ],
+  "broll": "local context visuals",
+  "notes": "Keep English words in English inside Bangla captions when spoken that way (Banglish). Check spellings of names."
+}

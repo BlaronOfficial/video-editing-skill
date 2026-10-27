@@ -1,0 +1,39 @@
+{
+  "name": "podcast",
+  "description": "Conversations: cuts on speaker turns, lower-third captions, chapter titles, subtle music.",
+  "captions": {
+    "style": "podcast_lower"
+  },
+  "color": {
+    "preset": "clean"
+  },
+  "pacing": {
+    "max_pause": 0.5,
+    "avg_shot_s": 6.0,
+    "punch_in": {
+      "every_s": 15,
+      "scale": 1.1,
+      "ease": "hold"
+    }
+  },
+  "music": {
+    "mood": "intro and outro only",
+    "volume": 0.1
+  },
+  "sfx": {
+    "density": "none",
+    "kinds": []
+  },
+  "graphics": {
+    "templates": [
+      "lower_third",
+      "chapter_title",
+      "quote_card"
+    ]
+  },
+  "transitions": [
+    "hard cut"
+  ],
+  "broll": "rare",
+  "notes": "Cut to the speaker on turns (diarization speaker ids). Quote cards for great lines."
+}

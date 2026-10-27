@@ -1,0 +1,4 @@
+{"name": "soft_serif", "description": "Elegant italic serif, lowercase, cream tone, gentle fade. The 'cool girl' / aesthetic look.",
+ "mode": "chunk", "max_words": 4, "max_chars": 28, "font": "Instrument Serif", "font_bangla": "Tiro Bangla", "size": 0.075,
+ "color": "#FFF6E8", "highlight": "#F7C6D9", "stroke": null, "shadow": 0.05, "shadow_color": "#00000066", "uppercase": false,
+ "bold": false, "animation": "fade", "y": -0.40, "capcut": {"intro": "fade"}}

@@ -1,0 +1,46 @@
+{
+  "name": "cinematic",
+  "description": "Film look: warm cinematic grade, slow pacing, minimal captions, score music.",
+  "captions": {
+    "style": "clean_minimal"
+  },
+  "color": {
+    "preset": "warm_cinematic",
+    "capcut_filter": "warm_cinematic"
+  },
+  "pacing": {
+    "max_pause": 0.6,
+    "avg_shot_s": 3.5,
+    "punch_in": {
+      "every_s": 12,
+      "scale": 1.05,
+      "ease": "inout"
+    }
+  },
+  "music": {
+    "mood": "cinematic score, ambient, piano",
+    "volume": 0.25
+  },
+  "sfx": {
+    "density": "low",
+    "kinds": [
+      "riser",
+      "impact"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "title_card",
+      "chapter_title",
+      "logo_sting"
+    ],
+    "accent": "#E8C08A",
+    "font": "DM Serif Display"
+  },
+  "transitions": [
+    "dissolve",
+    "fade_black"
+  ],
+  "broll": "wide establishing shots, slow motion, natural light",
+  "notes": "Let shots breathe. Risers into reveals. Low-intensity film grain is welcome."
+}

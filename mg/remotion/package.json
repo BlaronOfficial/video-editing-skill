@@ -1,0 +1,19 @@
+{
+  "name": "vedit-remotion",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Remotion compositions for video-editing-skill. Remotion licence: free for individuals and companies with up to 3 employees.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.0"
+  }
+}

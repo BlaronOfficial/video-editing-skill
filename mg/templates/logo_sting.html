@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- logo_sting: logo resolves from blur with a light sweep and glow; optional tagline. Works as intro/outro.
+     data: {logo: "C:/path/logo.png" (or text: "BRAND"), tagline, bg: null|"#000", duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .wrap { position: absolute; inset: 0; display: grid; place-items: center; }
+  .inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3vmin; }
+  .logo { position: relative; max-width: 55vmin; max-height: 30vmin; overflow: hidden; }
+  .logo img { display: block; max-width: 55vmin; max-height: 30vmin; }
+  .logo .txt { font-weight: 900; font-size: 16vmin; color: var(--paper); letter-spacing: -0.04em; }
+  .sweep { position: absolute; top: -20%; bottom: -20%; width: 35%; left: -60%;
+           background: linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent); mix-blend-mode: overlay; }
+  .tag { font-weight: 600; font-size: 3.8vmin; letter-spacing: .4em; text-transform: uppercase; color: rgba(255,255,255,.85); }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="wrap" id="wrap"><div class="inner">
+  <div class="logo" id="logo"><div class="sweep" id="sweep"></div></div><div class="tag" id="tag"></div></div></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ logo: "", text: "BRAND", tagline: "", bg: null, duration: 2.6 });
+V.brand(d.brand || {});
+if (d.bg) document.getElementById("wrap").style.background = d.bg;
+const logo = document.getElementById("logo");
+if (d.logo) { const img = new Image(); img.src = d.logo.startsWith("http") ? d.logo : "/__abs/" + d.logo.replace(/\\/g, "/"); logo.prepend(img);
+  window.__ready = new Promise((r) => { img.onload = r; img.onerror = r; }); }
+else { const t = document.createElement("div"); t.className = "txt"; t.textContent = d.text; logo.prepend(t); }
+const tag = document.getElementById("tag"); if (d.tagline) tag.textContent = d.tagline; else tag.remove();
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+tl.from(logo, { scale: 0.7, opacity: 0, filter: "blur(30px) brightness(2)", duration: 0.9, ease: "expo.out" }, 0)
+  .to("#sweep", { left: "130%", duration: 0.9, ease: "power2.inOut" }, 0.55)
+  .from(tag, { letterSpacing: "1.2em", opacity: 0, duration: 0.8, ease: "expo.out" }, 0.5)
+  .to(".inner", { scale: 1.04, duration: d.duration, ease: "none" }, 0)
+  .to(".inner", { opacity: 0, filter: "blur(16px)", duration: 0.4, ease: "power2.in" }, Math.max(1.4, d.duration - 0.4));
+</script></body></html>

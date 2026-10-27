@@ -1,0 +1,4 @@
+{"name": "podcast_lower", "description": "Two-line sentences on a translucent bar, low in frame. Podcasts, interviews, long-form.",
+ "mode": "sentence", "max_words": 12, "max_chars": 64, "font": "Poppins SemiBold", "font_bangla": "Hind Siliguri SemiBold",
+ "size": 0.042, "color": "#FFFFFF", "highlight": "#FFE14D", "stroke": null, "background": {"color": "#000000", "alpha": 0.55},
+ "uppercase": false, "animation": "fade", "y": -0.62, "y_landscape": -0.80, "capcut": {"intro": "fade"}}

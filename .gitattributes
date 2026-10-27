@@ -1,0 +1,13 @@
+# Keep the POSIX launcher runnable after checkout on Windows (CRLF would break "#!/usr/bin/env sh").
+vedit text eol=lf
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ttf binary
+*.mov binary
+*.mp4 binary
+*.webm binary

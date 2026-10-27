@@ -1,0 +1,4 @@
+{"name": "clean_minimal", "description": "Sentence-case, medium weight, soft shadow, no outline. Corporate, educational, calm.",
+ "mode": "chunk", "max_words": 5, "max_chars": 34, "font": "Poppins SemiBold", "font_bangla": "Hind Siliguri SemiBold", "size": 0.052,
+ "color": "#FFFFFF", "highlight": "#9AD7FF", "stroke": null, "shadow": 0.08, "shadow_color": "#00000099", "uppercase": false,
+ "animation": "fade", "y": -0.55, "y_landscape": -0.78, "capcut": {"intro": "fade"}}

@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- title_card: kinetic headline with kicker, subtitle and a hand-drawn underline swoosh.
+     data: {kicker, title, subtitle, highlight: ["word"], y: 0.42, panel: false, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .wrap { position: absolute; left: 6vw; right: 6vw; text-align: center; transform: translateY(-50%); }
+  .panel { background: rgba(10,10,14,.72); border-radius: 3vmin; padding: 5vmin 4vmin; backdrop-filter: blur(14px); }
+  .kicker { display: inline-block; font-weight: 700; font-size: 3.2vmin; letter-spacing: .3em; text-transform: uppercase;
+            color: var(--ink); background: var(--accent); padding: .8vmin 2vmin; border-radius: 1vmin; margin-bottom: 2.4vmin; }
+  .title { font-weight: 900; font-size: 11vmin; line-height: 1.02; color: var(--paper); letter-spacing: -0.03em;
+           text-shadow: 0 .6vmin 2.4vmin rgba(0,0,0,.45); }
+  .title .hl { color: var(--accent); }
+  .sub { margin-top: 2.6vmin; font-weight: 500; font-size: 4vmin; color: rgba(255,255,255,.9); text-shadow: 0 .3vmin 1.2vmin rgba(0,0,0,.5); }
+  svg.swoosh { display: block; margin: 1vmin auto 0; width: 60%; height: 4vmin; overflow: visible; }
+  svg.swoosh path { fill: none; stroke: var(--accent); stroke-width: 1.4vmin; stroke-linecap: round; }
+</style></head>
+<body><div id="stage" data-composition-id="main">
+  <div class="wrap" id="wrap"><div id="inner">
+    <div class="kicker" id="kicker"></div>
+    <div class="title" id="title"></div>
+    <svg class="swoosh" viewBox="0 0 600 40" preserveAspectRatio="none"><path id="sw" d="M8 28 C 150 6, 300 34, 592 12"/></svg>
+    <div class="sub" id="sub"></div>
+  </div></div>
+</div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ kicker: "NEW", title: "The fastest way to edit", subtitle: "", highlight: [], y: 0.42, panel: false, duration: 3.5 });
+V.brand(d.brand || {});
+const wrap = document.getElementById("wrap");
+wrap.style.top = (d.y * 100) + "%";
+if (d.panel) document.getElementById("inner").classList.add("panel");
+const k = document.getElementById("kicker"), t = document.getElementById("title"), s = document.getElementById("sub");
+if (d.kicker) k.textContent = d.kicker; else k.remove();
+if (d.subtitle) s.textContent = d.subtitle; else s.remove();
+t.textContent = d.title;
+if (V.isBangla(d.title)) t.classList.add("bn");
+const { words } = V.split(t);
+const hl = (d.highlight || []).map((w) => w.toLowerCase());
+words.forEach((w) => { if (hl.includes(w.textContent.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ""))) w.classList.add("hl"); });
+V.fit(t, { max: Math.round(Math.min(innerWidth, innerHeight) * 0.13), width: wrap.clientWidth });
+document.getElementById("stage").dataset.duration = d.duration;
+
+const sw = document.getElementById("sw");
+const len = sw.getTotalLength();
+gsap.set(sw, { strokeDasharray: len, strokeDashoffset: len });
+const tl = V.timeline("main");
+const out = Math.max(1.4, d.duration - 0.5);
+if (d.panel) tl.from("#inner", { scale: 0.92, opacity: 0, duration: 0.5, ease: "expo.out" }, 0);
+if (d.kicker) tl.from(k, { y: 20, opacity: 0, scale: 0.8, duration: 0.4, ease: "back.out(2)" }, 0.05);
+tl.from(words, { yPercent: 70, opacity: 0, filter: "blur(12px)", scale: 0.9, duration: 0.6, ease: "expo.out", stagger: 0.07 }, 0.12)
+  .to(sw, { strokeDashoffset: 0, duration: 0.55, ease: "power2.out" }, 0.12 + words.length * 0.07)
+  .from(s, { y: 16, opacity: 0, duration: 0.45, ease: "power3.out" }, 0.3 + words.length * 0.07);
+tl.to("#inner", { y: -30, opacity: 0, filter: "blur(10px)", duration: 0.4, ease: "power3.in" }, out);
+</script></body></html>

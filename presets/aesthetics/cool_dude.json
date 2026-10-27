@@ -1,0 +1,53 @@
+{
+  "name": "cool_dude",
+  "description": "Confident, punchy, high contrast: teal-orange grade, bold captions, hard cuts, whooshes, hip-hop beat.",
+  "captions": {
+    "style": "hormozi",
+    "overrides": {
+      "highlight": "#FFE14D"
+    }
+  },
+  "color": {
+    "preset": "teal_orange",
+    "capcut_filter": "teal_orange"
+  },
+  "pacing": {
+    "max_pause": 0.2,
+    "avg_shot_s": 1.6,
+    "punch_in": {
+      "every_s": 4,
+      "scale": 1.12,
+      "ease": "out"
+    }
+  },
+  "music": {
+    "mood": "hip-hop, trap, confident",
+    "volume": 0.18
+  },
+  "sfx": {
+    "density": "high",
+    "kinds": [
+      "whoosh",
+      "impact",
+      "click"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "text_punch",
+      "counter",
+      "kinetic_text",
+      "callout"
+    ],
+    "accent": "#FFE14D",
+    "accent2": "#00E0FF",
+    "font": "Anton"
+  },
+  "transitions": [
+    "hard cut",
+    "white_flash",
+    "zoom_in"
+  ],
+  "broll": "fast, kinetic, gear and city; cut on the beat",
+  "notes": "Land a text_punch on every key claim. Use shake/zoom_pulse sparingly on big beats."
+}

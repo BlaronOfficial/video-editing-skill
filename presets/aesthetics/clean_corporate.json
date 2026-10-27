@@ -1,0 +1,48 @@
+{
+  "name": "clean_corporate",
+  "description": "Professional and trustworthy: clean grade, minimal captions, lower thirds, charts, light music.",
+  "captions": {
+    "style": "clean_minimal"
+  },
+  "color": {
+    "preset": "clean",
+    "capcut_filter": "clean"
+  },
+  "pacing": {
+    "max_pause": 0.3,
+    "avg_shot_s": 3.0,
+    "punch_in": {
+      "every_s": 10,
+      "scale": 1.05,
+      "ease": "inout"
+    }
+  },
+  "music": {
+    "mood": "corporate, light, optimistic",
+    "volume": 0.14
+  },
+  "sfx": {
+    "density": "low",
+    "kinds": [
+      "click",
+      "swipe"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "lower_third",
+      "bar_chart",
+      "list_reveal",
+      "counter",
+      "logo_sting"
+    ],
+    "accent": "#2F6BFF",
+    "accent2": "#14C38E"
+  },
+  "transitions": [
+    "dissolve",
+    "slide_left"
+  ],
+  "broll": "office, product UI, team; steady shots",
+  "notes": "Brand colours everywhere. Lower third on first appearance. No emoji."
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- text_punch: one word SLAMS in (scale down from huge + shake + flash). For emphasis beats: "FREE", "BOOM", "৩ গুণ".
+     data: {text: "FREE", y: 0.45, color: null, outline: true, rotate: -4, duration: 1.2, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .w { position: absolute; left: 50%; transform: translate(-50%, -50%); font-family: "Anton", var(--font-display); font-size: 24vmin;
+       line-height: 1; color: var(--accent); white-space: nowrap; text-shadow: 0 1.4vmin 0 rgba(0,0,0,.35); }
+  .w.outline { -webkit-text-stroke: .8vmin var(--ink); paint-order: stroke fill; }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="flash" id="flash"></div><div class="w" id="w"></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ text: "FREE", y: 0.45, color: null, outline: true, rotate: -4, flash: true, duration: 1.2 });
+V.brand(d.brand || {});
+const w = document.getElementById("w");
+w.textContent = d.text; w.style.top = (d.y * 100) + "%";
+if (V.isBangla(d.text)) w.style.fontFamily = "var(--font-bangla)";
+if (d.color) w.style.color = d.color;
+if (d.outline) w.classList.add("outline");
+V.fit(w, { max: Math.round(Math.min(innerWidth, innerHeight) * 0.26), width: innerWidth * 0.9 });
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+tl.fromTo(w, { scale: 4, opacity: 0, rotation: d.rotate * 3 }, { scale: 1, opacity: 1, rotation: d.rotate, duration: 0.22, ease: "power4.in" }, 0)
+  .to(w, { x: "+=14", duration: 0.04, yoyo: true, repeat: 5, ease: "none" }, 0.22);
+if (d.flash) tl.fromTo("#flash", { opacity: 0.55 }, { opacity: 0, duration: 0.25, ease: "power2.out" }, 0.22);
+tl.to(w, { scale: 1.06, duration: Math.max(0.2, d.duration - 0.6), ease: "none" }, 0.45)
+  .to(w, { opacity: 0, scale: 0.8, duration: 0.18, ease: "power2.in" }, Math.max(0.5, d.duration - 0.18));
+</script></body></html>

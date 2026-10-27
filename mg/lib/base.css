@@ -1,0 +1,48 @@
+/* Shared base for all motion-graphics compositions. Fonts are downloaded by `vedit setup fonts`. */
+@font-face { font-family: "Poppins"; font-weight: 500; src: url(/__fonts/Poppins-Medium.ttf); }
+@font-face { font-family: "Poppins"; font-weight: 600; src: url(/__fonts/Poppins-SemiBold.ttf); }
+@font-face { font-family: "Poppins"; font-weight: 700; src: url(/__fonts/Poppins-Bold.ttf); }
+@font-face { font-family: "Poppins"; font-weight: 800; src: url(/__fonts/Poppins-ExtraBold.ttf); }
+@font-face { font-family: "Poppins"; font-weight: 900; src: url(/__fonts/Poppins-Black.ttf); }
+@font-face { font-family: "Anton"; src: url(/__fonts/Anton-Regular.ttf); }
+@font-face { font-family: "Bebas Neue"; src: url(/__fonts/BebasNeue-Regular.ttf); }
+@font-face { font-family: "Archivo Black"; src: url(/__fonts/ArchivoBlack-Regular.ttf); }
+@font-face { font-family: "Luckiest Guy"; src: url(/__fonts/LuckiestGuy-Regular.ttf); }
+@font-face { font-family: "Bangers"; src: url(/__fonts/Bangers-Regular.ttf); }
+@font-face { font-family: "DM Serif Display"; src: url(/__fonts/DMSerifDisplay-Regular.ttf); }
+@font-face { font-family: "DM Serif Display"; font-style: italic; src: url(/__fonts/DMSerifDisplay-Italic.ttf); }
+@font-face { font-family: "Instrument Serif"; src: url(/__fonts/InstrumentSerif-Regular.ttf); }
+@font-face { font-family: "Instrument Serif"; font-style: italic; src: url(/__fonts/InstrumentSerif-Italic.ttf); }
+@font-face { font-family: "Permanent Marker"; src: url(/__fonts/PermanentMarker-Regular.ttf); }
+@font-face { font-family: "Caveat Brush"; src: url(/__fonts/CaveatBrush-Regular.ttf); }
+@font-face { font-family: "Rubik Mono One"; src: url(/__fonts/RubikMonoOne-Regular.ttf); }
+@font-face { font-family: "Hind Siliguri"; font-weight: 500; src: url(/__fonts/HindSiliguri-Medium.ttf); }
+@font-face { font-family: "Hind Siliguri"; font-weight: 600; src: url(/__fonts/HindSiliguri-SemiBold.ttf); }
+@font-face { font-family: "Hind Siliguri"; font-weight: 700; src: url(/__fonts/HindSiliguri-Bold.ttf); }
+@font-face { font-family: "Tiro Bangla"; src: url(/__fonts/TiroBangla-Regular.ttf); }
+@font-face { font-family: "Galada"; src: url(/__fonts/Galada-Regular.ttf); }
+@font-face { font-family: "Atma"; font-weight: 700; src: url(/__fonts/Atma-Bold.ttf); }
+
+:root {
+  --accent: #FFE14D;
+  --accent-2: #FF4D6D;
+  --ink: #0B0B0F;
+  --paper: #FFFFFF;
+  --font-display: "Poppins", "Hind Siliguri", sans-serif;
+  --font-bangla: "Hind Siliguri", "Poppins", sans-serif;
+  --safe-top: 12%;
+  --safe-bottom: 22%;
+}
+
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  background: transparent; overflow: hidden;
+  -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+}
+body.preview { background: repeating-conic-gradient(#2a2a2a 0% 25%, #3a3a3a 0% 50%) 50% / 40px 40px; }
+
+#stage { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: var(--font-display); }
+.abs { position: absolute; }
+.center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.word, .char { display: inline-block; will-change: transform, opacity, filter; }
+.bn { font-family: var(--font-bangla); }

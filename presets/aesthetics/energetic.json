@@ -1,0 +1,50 @@
+{
+  "name": "energetic",
+  "description": "YouTube high energy: vibrant grade, fast cuts, big text, constant motion, SFX and zooms.",
+  "captions": {
+    "style": "comic_pop"
+  },
+  "color": {
+    "preset": "vibrant"
+  },
+  "pacing": {
+    "max_pause": 0.15,
+    "avg_shot_s": 1.2,
+    "punch_in": {
+      "every_s": 2.5,
+      "scale": 1.2,
+      "ease": "out"
+    }
+  },
+  "music": {
+    "mood": "upbeat electronic, energetic",
+    "volume": 0.16
+  },
+  "sfx": {
+    "density": "very_high",
+    "kinds": [
+      "whoosh",
+      "pop",
+      "impact",
+      "glitch"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "text_punch",
+      "emoji_pop",
+      "counter",
+      "callout",
+      "shape_wipe"
+    ],
+    "accent": "#FFD23F",
+    "accent2": "#FF3B6B"
+  },
+  "transitions": [
+    "shape_wipe",
+    "zoom_in",
+    "white_flash"
+  ],
+  "broll": "memes, reactions, quick inserts",
+  "notes": "Never more than 2 seconds without something changing on screen."
+}

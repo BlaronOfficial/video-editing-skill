@@ -1,0 +1,4 @@
+{"name": "neon_glow", "description": "White words with a coloured glow and pink active word. Night, gaming, tech, hype.",
+ "mode": "karaoke", "max_words": 3, "max_chars": 20, "font": "Poppins Black", "font_bangla": "Hind Siliguri Bold", "size": 0.08,
+ "color": "#FFFFFF", "highlight": "#FF4DD8", "stroke": "#2A0B3D", "stroke_width": 0.07, "shadow": 0.14, "shadow_color": "#FF4DD8AA",
+ "uppercase": true, "pop_scale": 1.12, "animation": "pop", "y": -0.42, "capcut": {"intro": "pop"}}

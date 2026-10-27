@@ -1,0 +1,47 @@
+{
+  "name": "tech_explainer",
+  "description": "Screen recordings plus face: highlight boxes, callouts, zooms on UI, crisp captions, synth music.",
+  "captions": {
+    "style": "bold_box"
+  },
+  "color": {
+    "preset": "clean"
+  },
+  "pacing": {
+    "max_pause": 0.25,
+    "avg_shot_s": 2.4,
+    "punch_in": {
+      "every_s": 6,
+      "scale": 1.6,
+      "ease": "inout"
+    }
+  },
+  "music": {
+    "mood": "light synthwave, tech, minimal",
+    "volume": 0.12
+  },
+  "sfx": {
+    "density": "medium",
+    "kinds": [
+      "click",
+      "swipe",
+      "ding"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "highlight_box",
+      "callout",
+      "list_reveal",
+      "notification",
+      "chapter_title"
+    ],
+    "accent": "#00E0FF"
+  },
+  "transitions": [
+    "slide_left",
+    "hard cut"
+  ],
+  "broll": "screen captures zoomed to the relevant UI",
+  "notes": "Zoom screen recordings to what the speaker is talking about; mouse clicks get click SFX."
+}

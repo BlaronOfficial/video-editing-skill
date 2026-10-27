@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- notification: phone-style banner drops in from the top (DM / sale / message hooks). Generic look, no real app branding.
+     data: {app: "Messages", icon: "💬", title: "New message", body: "Your edit is ready 🎬", time: "now", y: 0.1, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .n { position: absolute; left: 5vw; right: 5vw; display: flex; gap: 2.6vmin; align-items: center; padding: 2.6vmin 3vmin;
+       border-radius: 4vmin; background: rgba(245,245,247,.86); backdrop-filter: blur(24px); box-shadow: 0 2vmin 5vmin rgba(0,0,0,.3); }
+  .ic { flex: none; width: 9vmin; height: 9vmin; border-radius: 2.2vmin; background: var(--accent); display: grid; place-items: center; font-size: 5.4vmin; }
+  .tx { flex: 1; min-width: 0; color: #111; }
+  .top { display: flex; justify-content: space-between; font-size: 2.8vmin; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .ti { font-weight: 800; font-size: 3.8vmin; margin-top: .4vmin; }
+  .bo { font-weight: 500; font-size: 3.6vmin; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="n" id="n"><div class="ic" id="ic"></div><div class="tx">
+  <div class="top"><span id="app"></span><span id="time"></span></div><div class="ti" id="ti"></div><div class="bo" id="bo"></div></div></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ app: "Messages", icon: "💬", title: "New message", body: "Your edit is ready 🎬", time: "now", y: 0.08, duration: 3 });
+V.brand(d.brand || {});
+const n = document.getElementById("n"); n.style.top = (d.y * 100) + "%";
+for (const [id, v] of [["ic", d.icon], ["app", d.app], ["time", d.time], ["ti", d.title], ["bo", d.body]]) document.getElementById(id).textContent = v;
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+tl.from(n, { yPercent: -180, duration: 0.55, ease: "back.out(1.4)" }, 0)
+  .from("#ic", { scale: 0.4, duration: 0.4, ease: "back.out(2)" }, 0.25)
+  .to(n, { yPercent: -180, duration: 0.4, ease: "power3.in" }, Math.max(1.2, d.duration - 0.4));
+</script></body></html>

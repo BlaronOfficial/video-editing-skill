@@ -1,0 +1,4 @@
+{"name": "hormozi", "description": "Huge uppercase 1-2 words, heavy outline, green/yellow active word. Max retention, talking-head.",
+ "mode": "karaoke", "max_words": 2, "max_chars": 16, "font": "Anton", "font_bangla": "Hind Siliguri Bold", "size": 0.11,
+ "color": "#FFFFFF", "highlight": "#39FF6A", "stroke": "#000000", "stroke_width": 0.12, "shadow": 0.06, "uppercase": true,
+ "pop_scale": 1.18, "animation": "pop", "y": -0.36, "capcut": {"font": "Anton", "intro": "pop"}}

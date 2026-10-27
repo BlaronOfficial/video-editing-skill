@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- progress_bar: retention bar across the whole video with a glowing head and optional chapter ticks.
+     data: {position: top|bottom, thickness: 0.7 (vmin), ticks: [0.25, 0.6] (fractions), duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .track { position: absolute; left: 0; right: 0; height: var(--h); background: rgba(255,255,255,.18); }
+  .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--accent); transform-origin: left center;
+          box-shadow: 0 0 2vmin var(--accent); }
+  .tick { position: absolute; top: 0; bottom: 0; width: .4vmin; background: rgba(0,0,0,.55); }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="track" id="track"><div class="fill" id="fill"></div></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ position: "top", thickness: 0.7, ticks: [], duration: 30 });
+V.brand(d.brand || {});
+const track = document.getElementById("track");
+track.style.setProperty("--h", d.thickness + "vmin");
+track.style[d.position === "bottom" ? "bottom" : "top"] = "0";
+(d.ticks || []).forEach((f) => { const t = document.createElement("div"); t.className = "tick"; t.style.left = (f * 100) + "%"; track.appendChild(t); });
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+tl.fromTo("#fill", { scaleX: 0 }, { scaleX: 1, duration: d.duration, ease: "none" }, 0);
+</script></body></html>

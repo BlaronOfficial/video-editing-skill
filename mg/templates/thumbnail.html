@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- thumbnail: still composition (render with --still). data: {image: abs path, title, highlight: [words], emoji,
+     layout: left|right|bottom, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  #stage { background: #000; }
+  .bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: saturate(1.25) contrast(1.08); }
+  .shade { position: absolute; inset: 0; }
+  .title { position: absolute; font-family: "Anton", var(--font-display); color: #fff; line-height: .98; text-transform: uppercase;
+           -webkit-text-stroke: .5vmin #000; paint-order: stroke fill; text-shadow: 0 1.2vmin 0 rgba(0,0,0,.55); }
+  .title .hl { color: var(--accent); }
+  .emoji { position: absolute; font-size: 22vmin; filter: drop-shadow(0 1vmin 2vmin rgba(0,0,0,.5)); }
+</style></head>
+<body><div id="stage" data-composition-id="main" data-duration="0.1"><div class="bg" id="bg"></div><div class="shade" id="shade"></div>
+  <div class="title" id="title"></div><div class="emoji" id="emoji"></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ image: "", title: "I tried editing with AI", highlight: ["AI"], emoji: "", layout: "left" });
+V.brand(d.brand || {});
+const W = innerWidth, H = innerHeight;
+if (d.image) document.getElementById("bg").style.backgroundImage = `url("/__abs/${d.image.replace(/\\/g, "/")}")`;
+const t = document.getElementById("title"), sh = document.getElementById("shade");
+t.textContent = d.title; if (V.isBangla(d.title)) t.style.fontFamily = "var(--font-bangla)";
+const { words } = V.split(t);
+const hl = (d.highlight || []).map((w) => w.toLowerCase());
+words.forEach((w) => { if (hl.includes(w.textContent.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ""))) w.classList.add("hl"); });
+if (d.layout === "bottom" || H > W) {
+  Object.assign(t.style, { left: "6%", right: "6%", bottom: "8%", textAlign: "center" });
+  sh.style.background = "linear-gradient(to top, rgba(0,0,0,.75), transparent 55%)";
+  V.fit(t, { max: Math.round(H * 0.11), width: W * 0.88, height: H * 0.4 });
+} else {
+  const right = d.layout === "right";
+  Object.assign(t.style, { top: "50%", transform: "translateY(-50%)", width: "52%", [right ? "right" : "left"]: "5%", textAlign: right ? "right" : "left" });
+  sh.style.background = `linear-gradient(to ${right ? "left" : "right"}, rgba(0,0,0,.8), transparent 70%)`;
+  V.fit(t, { max: Math.round(H * 0.2), width: W * 0.5, height: H * 0.8 });
+}
+const e = document.getElementById("emoji");
+if (d.emoji) { e.textContent = d.emoji; Object.assign(e.style, { right: d.layout === "right" ? "auto" : "6%", left: d.layout === "right" ? "6%" : "auto", top: "8%" }); } else e.remove();
+window.__ready = d.image ? new Promise((r) => { const i = new Image(); i.onload = r; i.onerror = r; i.src = `/__abs/${d.image.replace(/\\/g, "/")}`; }) : Promise.resolve();
+</script></body></html>

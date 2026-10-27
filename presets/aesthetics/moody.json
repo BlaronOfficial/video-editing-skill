@@ -1,0 +1,49 @@
+{
+  "name": "moody",
+  "description": "Dark, desaturated, intimate: moody grade, big captions, slower music, vignette.",
+  "captions": {
+    "style": "karaoke_pop",
+    "overrides": {
+      "size": 0.1,
+      "highlight": "#FF5A5A"
+    }
+  },
+  "color": {
+    "preset": "moody",
+    "capcut_filter": "moody"
+  },
+  "pacing": {
+    "max_pause": 0.4,
+    "avg_shot_s": 2.8,
+    "punch_in": {
+      "every_s": 8,
+      "scale": 1.08,
+      "ease": "inout"
+    }
+  },
+  "music": {
+    "mood": "dark ambient, melancholic, slow",
+    "volume": 0.22
+  },
+  "sfx": {
+    "density": "low",
+    "kinds": [
+      "riser",
+      "impact"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "kinetic_text",
+      "quote_card"
+    ],
+    "accent": "#FF5A5A",
+    "font": "Anton"
+  },
+  "transitions": [
+    "fade_black",
+    "dissolve"
+  ],
+  "broll": "night, shadows, rain, close textures",
+  "notes": "Vignette effect on emotional beats."
+}

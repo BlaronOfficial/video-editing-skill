@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- bar_chart: animated bars with values; highlight one bar. data: {title, bars: [{label, value}], highlight: 2,
+     unit: "%", y: 0.5, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .card { position: absolute; left: 7vw; right: 7vw; transform: translateY(-50%); padding: 5vmin; border-radius: 3vmin;
+          background: rgba(12,12,16,.74); backdrop-filter: blur(14px); }
+  .h { font-weight: 800; font-size: 5.4vmin; color: var(--paper); margin-bottom: 4vmin; }
+  .chart { display: flex; align-items: flex-end; gap: 3vmin; height: 40vmin; }
+  .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar { width: 100%; background: rgba(255,255,255,.28); border-radius: 1.4vmin 1.4vmin .4vmin .4vmin; transform-origin: bottom; }
+  .col.hl .bar { background: var(--accent); box-shadow: 0 0 3vmin color-mix(in srgb, var(--accent) 60%, transparent); }
+  .v { font-weight: 800; font-size: 4.2vmin; color: var(--paper); margin-bottom: 1.2vmin; font-variant-numeric: tabular-nums; }
+  .l { margin-top: 1.6vmin; font-weight: 600; font-size: 3.2vmin; color: rgba(255,255,255,.8); text-align: center; }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="card" id="card"><div class="h" id="h"></div><div class="chart" id="chart"></div></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ title: "Watch time", bars: [{ label: "Before", value: 22 }, { label: "Captions", value: 41 }, { label: "Full edit", value: 68 }],
+                   highlight: 2, unit: "%", y: 0.5, duration: 4 });
+V.brand(d.brand || {});
+const card = document.getElementById("card"); card.style.top = (d.y * 100) + "%";
+const h = document.getElementById("h"); if (d.title) h.textContent = d.title; else h.remove();
+const max = Math.max(...d.bars.map((b) => b.value)) || 1;
+const chart = document.getElementById("chart");
+const cols = d.bars.map((b, i) => {
+  const c = document.createElement("div"); c.className = "col" + (i === d.highlight ? " hl" : "");
+  c.innerHTML = `<div class="v">0${d.unit}</div><div class="bar" style="height:${(b.value / max) * 78}%"></div><div class="l"></div>`;
+  c.querySelector(".l").textContent = b.label; chart.appendChild(c); return c;
+});
+document.getElementById("stage").dataset.duration = d.duration;
+const tl = V.timeline("main");
+tl.from(card, { y: 40, opacity: 0, duration: 0.5, ease: "expo.out" }, 0);
+cols.forEach((c, i) => {
+  const st = { n: 0 }, v = c.querySelector(".v");
+  tl.from(c.querySelector(".bar"), { scaleY: 0, duration: 0.8, ease: "expo.out" }, 0.3 + i * 0.15)
+    .to(st, { n: d.bars[i].value, duration: 0.8, ease: "expo.out", onUpdate: () => { v.textContent = Math.round(st.n) + d.unit; } }, 0.3 + i * 0.15);
+});
+tl.to(card, { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, Math.max(2, d.duration - 0.35));
+</script></body></html>

@@ -1,0 +1,26 @@
+[project]
+name = "vedit"
+version = "0.1.0"
+description = "Engine behind the video-editing-skill Claude skill: transcription, edit plans, rendering, CapCut projects, motion graphics."
+license = "MIT"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "pycapcut==0.0.4",          # CapCut effect/filter/transition metadata + segment builders (0.1.0 breaks the API)
+    "pydantic>=2.7",
+    "numpy>=1.26",
+    "pillow>=10.0",
+    "httpx>=0.27",
+    "faster-whisper>=1.1",      # local word-level transcription (CPU int8 works without CUDA)
+    "opencv-python-headless>=4.10",
+    "mcp>=1.2",                 # optional MCP server over the same engine
+]
+
+[project.scripts]
+vedit = "vedit.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vedit"]

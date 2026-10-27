@@ -1,0 +1,46 @@
+{
+  "name": "cool_girl",
+  "description": "Soft, warm, dreamy: pastel grade, serif captions, slow push-ins, gentle dissolves, lo-fi music.",
+  "captions": {
+    "style": "soft_serif"
+  },
+  "color": {
+    "preset": "pastel",
+    "capcut_filter": "soft"
+  },
+  "pacing": {
+    "max_pause": 0.35,
+    "avg_shot_s": 2.6,
+    "punch_in": {
+      "every_s": 7,
+      "scale": 1.06,
+      "ease": "inout"
+    }
+  },
+  "music": {
+    "mood": "lo-fi, dreamy, indie pop, soft r&b",
+    "volume": 0.2
+  },
+  "sfx": {
+    "density": "low",
+    "kinds": [
+      "swipe",
+      "ding"
+    ]
+  },
+  "graphics": {
+    "templates": [
+      "title_card",
+      "quote_card",
+      "list_reveal"
+    ],
+    "accent": "#F7C6D9",
+    "accent2": "#B9A6FF",
+    "font": "Instrument Serif"
+  },
+  "transitions": [
+    "dissolve"
+  ],
+  "broll": "lifestyle, close-ups, textures, golden hour; float clips in with fades",
+  "notes": "Fewer, softer graphics. Lowercase titles. Leave breathing room; never hard-flash."
+}

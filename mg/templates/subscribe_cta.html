@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- subscribe_cta: pill button pops, cursor glides in and clicks, label flips to the done state, bell rings.
+     data: {label: "Follow", done: "Following ✓", handle: "@yourname", y: 0.72, bell: true, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .row { position: absolute; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 2.4vmin; }
+  .btn { position: relative; font-weight: 800; font-size: 5.4vmin; color: #fff; background: var(--accent-2); padding: 2vmin 5vmin;
+         border-radius: 10vmin; box-shadow: 0 1.2vmin 3vmin rgba(0,0,0,.35); white-space: nowrap; overflow: hidden; }
+  .btn.done { background: #2b2b33; }
+  .handle { font-weight: 700; font-size: 4vmin; color: #fff; text-shadow: 0 .3vmin 1.2vmin rgba(0,0,0,.6); }
+  .bell { font-size: 7vmin; transform-origin: 50% 10%; }
+  .cursor { position: absolute; width: 7vmin; height: 7vmin; }
+  .ripple { position: absolute; width: 4vmin; height: 4vmin; border-radius: 50%; border: .6vmin solid #fff; transform: translate(-50%, -50%); }
+</style></head>
+<body><div id="stage" data-composition-id="main">
+  <div class="row" id="row"><div class="handle" id="handle"></div><div class="btn" id="btn"><span id="lbl"></span></div><div class="bell" id="bell">🔔</div></div>
+  <div class="ripple" id="ripple"></div>
+  <svg class="cursor" id="cursor" viewBox="0 0 24 24"><path d="M4 2l15 9-6.5 1.6L16 20l-3 1.4-3.5-7.6L4 18z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+</div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ label: "Follow", done: "Following ✓", handle: "", y: 0.72, bell: true, duration: 3.2 });
+V.brand(d.brand || {});
+const row = document.getElementById("row"); row.style.top = (d.y * 100) + "%";
+const lbl = document.getElementById("lbl"), btn = document.getElementById("btn");
+lbl.textContent = d.label;
+const handle = document.getElementById("handle"); if (d.handle) handle.textContent = d.handle; else handle.remove();
+if (!d.bell) document.getElementById("bell").remove();
+document.getElementById("stage").dataset.duration = d.duration;
+const r = btn.getBoundingClientRect();
+const cx = r.left + r.width * 0.62, cy = r.top + r.height * 0.6;
+const cursor = document.getElementById("cursor"), ripple = document.getElementById("ripple");
+gsap.set(cursor, { left: innerWidth * 0.85, top: innerHeight * 0.95 });
+gsap.set(ripple, { left: cx, top: cy, scale: 0, opacity: 0 });
+const tl = V.timeline("main");
+tl.from(row, { scale: 0.5, opacity: 0, duration: 0.45, ease: "back.out(2.2)" }, 0)
+  .to(cursor, { left: cx, top: cy, duration: 0.7, ease: "power3.inOut" }, 0.35)
+  .to(cursor, { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, 1.05)
+  .to(btn, { scale: 0.92, duration: 0.08, yoyo: true, repeat: 1 }, 1.05)
+  .to(ripple, { scale: 4, opacity: 0, duration: 0.5, ease: "power2.out", startAt: { opacity: 0.9, scale: 0.4 } }, 1.08);
+if (d.bell) tl.to("#bell", { rotation: 18, duration: 0.07, yoyo: true, repeat: 7, ease: "sine.inOut" }, 1.25);
+tl.to(cursor, { left: innerWidth * 0.9, top: innerHeight * 1.05, duration: 0.5, ease: "power2.in" }, 1.6)
+  .to([row], { opacity: 0, y: 30, duration: 0.3, ease: "power2.in" }, Math.max(2, d.duration - 0.3));
+// Deterministic label state when seeking backwards and forwards.
+tl.eventCallback("onUpdate", () => {
+  const isDone = tl.time() >= 1.12;
+  lbl.textContent = isDone ? d.done : d.label;
+  btn.classList.toggle("done", isDone);
+});
+</script></body></html>

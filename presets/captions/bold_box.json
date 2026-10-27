@@ -1,0 +1,4 @@
+{"name": "bold_box", "description": "White bold words on a dark rounded box. Readable on any footage, ads and explainers.",
+ "mode": "chunk", "max_words": 4, "max_chars": 26, "font": "Poppins Bold", "font_bangla": "Hind Siliguri Bold", "size": 0.062,
+ "color": "#FFFFFF", "highlight": "#FFE14D", "stroke": null, "background": {"color": "#111111", "alpha": 0.78}, "uppercase": false,
+ "animation": "pop", "y": -0.45, "capcut": {"intro": "pop"}}

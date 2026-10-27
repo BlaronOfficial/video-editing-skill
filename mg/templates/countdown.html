@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- countdown: 3-2-1 with ring sweep per number, then a final word. data: {from: 3, final: "GO", y: 0.45, duration, brand} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<style>
+  .box { position: absolute; left: 50%; width: 46vmin; height: 46vmin; transform: translate(-50%, -50%); display: grid; place-items: center; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  circle { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
+  .bg { stroke: rgba(255,255,255,.2); }
+  .num { position: absolute; font-family: "Anton", var(--font-display); font-size: 26vmin; color: var(--paper); text-shadow: 0 1vmin 3vmin rgba(0,0,0,.45); }
+</style></head>
+<body><div id="stage" data-composition-id="main"><div class="box" id="box">
+  <svg viewBox="0 0 50 50"><circle class="bg" cx="25" cy="25" r="22"/><circle id="ring" cx="25" cy="25" r="22"/></svg></div></div>
+<script src="/__vendor/gsap.min.js"></script><script src="/__mg/vedit.js"></script>
+<script>
+const d = V.data({ from: 3, final: "GO", y: 0.45, duration: 4 });
+V.brand(d.brand || {});
+const box = document.getElementById("box"); box.style.top = (d.y * 100) + "%";
+document.getElementById("stage").dataset.duration = d.duration;
+const ring = document.getElementById("ring"), C = 2 * Math.PI * 22;
+gsap.set(ring, { strokeDasharray: C, strokeDashoffset: C });
+const labels = [...Array(d.from).keys()].map((i) => String(d.from - i)).concat(d.final ? [d.final] : []);
+const per = (d.duration - 0.2) / labels.length;
+const tl = V.timeline("main");
+labels.forEach((txt, i) => {
+  const el = document.createElement("div"); el.className = "num"; el.textContent = txt; box.appendChild(el);
+  const at = 0.1 + i * per;
+  tl.fromTo(el, { scale: 1.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25, ease: "power3.out" }, at)
+    .to(el, { scale: 0.6, opacity: 0, duration: 0.2, ease: "power2.in" }, at + per - 0.2);
+  if (i < d.from) tl.fromTo(ring, { strokeDashoffset: C }, { strokeDashoffset: 0, duration: per, ease: "none" }, at);
+});
+</script></body></html>
