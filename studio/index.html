@@ -1,0 +1,53 @@
+<title>vedit Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Plan, tune and approve a video edit live before it is rendered.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=JetBrains+Mono:wght@400;600&family=Poppins:wght@500;600;700;800;900&family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Luckiest+Guy&family=Bangers&family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Permanent+Marker&family=Caveat+Brush&family=Rubik+Mono+One&family=Hind+Siliguri:wght@500;600;700&family=Tiro+Bangla&family=Galada&family=Atma:wght@700&family=Noto+Sans+Bengali:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="css/studio.css">
+
+<div id="app" class="app">
+  <header id="studio-head" class="studio-head">
+    <div class="brand" aria-label="vedit Studio"><span class="brand-mark">vedit</span><span class="brand-sub">Studio</span></div>
+    <label for="project-select" class="sr-only">Project</label>
+    <select id="project-select" class="project-select"></select>
+    <div id="status-chips" class="chips" aria-label="Project status"></div>
+    <span class="spacer"></span>
+    <button id="pending-btn" class="btn" type="button" hidden></button>
+    <button id="approve-btn" class="btn primary" type="button">Approve plan</button>
+    <span id="approve-status" class="sr-only" aria-live="polite"></span>
+  </header>
+
+  <main class="studio-main">
+    <section class="viewer" aria-label="Preview">
+      <div id="stage-box" class="stage-box"></div>
+      <div id="transport" class="transport"></div>
+    </section>
+
+    <aside class="side" aria-label="Edit tools">
+      <nav id="tabs" class="tabs" role="tablist" aria-label="Panels">
+        <button type="button" role="tab" data-tab="suggestions">Suggestions <span class="count tnum"></span></button>
+        <button type="button" role="tab" data-tab="transcript">Transcript</button>
+        <button type="button" role="tab" data-tab="knobs">Tune</button>
+        <button type="button" role="tab" data-tab="inspector">Inspector</button>
+        <button type="button" role="tab" data-tab="library">Library</button>
+        <button type="button" role="tab" data-tab="ask">Ask Claude</button>
+      </nav>
+      <div id="panel-suggestions" class="panel" role="tabpanel" aria-label="Suggestions"></div>
+      <div id="panel-transcript" class="panel" role="tabpanel" aria-label="Transcript" hidden></div>
+      <div id="panel-knobs" class="panel" role="tabpanel" aria-label="Tune" hidden></div>
+      <div id="panel-inspector" class="panel" role="tabpanel" aria-label="Inspector" hidden></div>
+      <div id="panel-library" class="panel" role="tabpanel" aria-label="Library" hidden></div>
+      <div id="panel-ask" class="panel" role="tabpanel" aria-label="Ask Claude" hidden></div>
+    </aside>
+  </main>
+
+  <section id="timeline" class="timeline" aria-label="Timeline"></section>
+
+  <div id="notice" class="notice" role="status">
+    <h2>Loading the Studio</h2>
+    <p>Reading the project Claude prepared: the cut, transcript, previews and suggestions.</p>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>

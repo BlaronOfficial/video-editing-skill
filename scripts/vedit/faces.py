@@ -10,24 +10,12 @@ from functools import lru_cache
 
 import numpy as np
 
-from .paths import cache_dir
 from .util import VeditError
-
-YUNET_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 
 
 def _yunet_model() -> str:
-    path = cache_dir() / "models" / "face_detection_yunet_2023mar.onnx"
-    if not path.exists() or path.stat().st_size < 100_000:
-        import httpx
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            resp = httpx.get(YUNET_URL, follow_redirects=True, timeout=120)
-            resp.raise_for_status()
-        except Exception as exc:
-            raise VeditError(f"Could not download the face-detection model ({exc}). Check the connection and retry.") from exc
-        path.write_bytes(resp.content)
-    return str(path)
+    from . import models
+    return str(models.ensure("yunet"))      # 230 KB: below the ask threshold, downloads on first use
 
 
 @lru_cache(maxsize=4)

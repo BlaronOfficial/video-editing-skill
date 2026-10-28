@@ -13,7 +13,7 @@ from typing import Any
 from .paths import personal_dir
 from .util import read_json, write_json
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 DEFAULTS: dict[str, Any] = {
     "schema_version": SCHEMA_VERSION,
@@ -43,10 +43,34 @@ DEFAULTS: dict[str, Any] = {
     "pinterest": {"default_mode": "moodboard"},   # moodboard | use
     "defaults": {"brand": None, "style": None, "captions": "karaoke_pop"},
     "screen_control": {"preferred": "auto"},      # auto | computer-use | windows-mcp | none
+    # ---- v2
+    "mode": {"default": "plan"},                  # plan | step | auto  (execute needs an approved plan)
+    "outputs": {"handoffs": "ask"},               # ask | none | ["capcut", "resolve", "nle", "llc"]
+    "models": {"policy": "ask"},                  # ask: say size + ETA, download on yes | auto
+    "writing": {"pass": "en"},                    # en | off   (AI-tell check on text the skill writes)
+    "browser": {"prefer": ["claude-in-chrome", "claude-browser", "kapture", "browser-use", "computer-use", "web"]},
+    "webai": {
+        "enabled": True,                          # use web AI tools the owner is already logged into
+        "budget_per_project": 12,                 # free/subscription generations before asking
+        "ask_credit_based": True,                 # always ask before credit-metered services
+        "services": {},                           # learned per service: {"gemini": {"ok": true, ...}}
+    },
+    "downloads": {"policy": "log_all"},           # log_all | free_only | ask
+    "learning": {"studio": True, "editor_diffs": True, "chat": True, "analytics": False},
+    "addons": {},                                 # per add-on flags, e.g. {"capcut": {"enabled": false}}
+    "studio": {
+        "artifact_url": None,                     # the pinned Studio artifact (one per user)
+        "proxy_size": 854,                        # long side of preview proxies (px)
+        "proxy_kbps": 700,
+        "chunk_mb": 18,                           # assets are capped at 20 MiB each
+    },
 }
 
 SECRET_ENV = {
     "elevenlabs": "ELEVENLABS_API_KEY",
+    "pexels": "PEXELS_API_KEY",
+    "pixabay": "PIXABAY_API_KEY",
+    "gemini": "GEMINI_API_KEY",
 }
 
 
@@ -95,6 +119,10 @@ def migrate(user: dict[str, Any]) -> dict[str, Any]:
     version = user.get("schema_version", 1)
     if version > SCHEMA_VERSION:
         return user  # written by a newer skill version; leave untouched
+    if version < 2:
+        # v1 -> v2: CapCut became an optional hand-off. Keep every v1 value; new keys come from DEFAULTS.
+        user = dict(user)
+        user["schema_version"] = 2
     return user
 
 

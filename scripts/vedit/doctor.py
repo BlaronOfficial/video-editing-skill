@@ -56,35 +56,12 @@ def check() -> dict:
     add("elevenlabs key (Scribe / TTS)", bool(config.secret("elevenlabs")), "",
         "Optional: `vedit secret set elevenlabs <key>` or set ELEVENLABS_API_KEY", required=False)
 
-    # CapCut
-    from .capcut import store
-    try:
-        root = store.drafts_root()
-        add("capcut drafts folder", True, str(root))
-    except Exception as exc:
-        add("capcut drafts folder", False, str(exc), "Install CapCut desktop and create one project")
-    ver = store.installed_version()
-    add("capcut version", bool(ver), ver or "unknown", "", required=False)
-    if ver and ver.split(".")[0].isdigit() and int(ver.split(".")[0]) >= 10:
-        add("capcut version support", False, f"{ver}: CapCut 10.x is reported to reject tool-written projects",
-            "Projects may fail to open; the MP4 render is unaffected. Consider CapCut 9.x with auto-update off.",
-            required=False)
-    calib = (personal_dir() / "capcut" / "calibration.json").exists()
-    add("capcut calibrated", calib, cfg["capcut"].get("app_version") or "",
-        "Create an empty project in CapCut, close CapCut, run `vedit capcut calibrate`")
-    if calib and ver and cfg["capcut"].get("app_version") and not ver.startswith(cfg["capcut"]["app_version"]):
-        add("capcut calibration current", False, f"calibrated on {cfg['capcut']['app_version']}, installed {ver}",
-            "CapCut updated: rerun `vedit capcut calibrate`")
-    add("capcut alpha overlays", cfg["capcut"]["alpha_overlays"] != "unknown", cfg["capcut"]["alpha_overlays"],
-        "Run `vedit capcut probe-alpha` once (needs a quick look in CapCut)", required=False)
-
-    # Optional integrations
-    hf = which("higgsfield")
-    add("higgsfield cli", bool(hf), _version(["higgsfield", "--version"]) or "",
-        "Optional: `npm i -g @higgsfield/cli && higgsfield auth login && npx skills add higgsfield-ai/skills`",
-        required=False)
-    add("git (updates)", bool(which("git")) and (SKILL_ROOT / ".git").exists(), "",
-        "Install via `git clone` to receive updates with `vedit update`", required=False)
+    # Optional add-ons (CapCut, DaVinci Resolve, LosslessCut, Blender, earshot, paid services, ...):
+    # reported, never required. The skill is standalone without them.
+    from . import addons
+    for row in addons.check_all():
+        add(f"add-on: {row['name']}", row["ok"], row["detail"] + ("" if row["enabled"] else " (disabled)"),
+            row.get("install", ""), required=False)
     if IS_WINDOWS:
         add("screen control", True, "Use Claude Code Desktop computer use, or add Windows-MCP: "
             "`claude mcp add --scope user --transport stdio windows-mcp -- uvx windows-mcp serve`", required=False)

@@ -24,7 +24,17 @@ OVERLAY_FORMATS = {"prores": ".mov", "webm": ".webm", "key": "_key.mp4", "mp4": 
 
 
 def templates() -> dict:
-    return read_json(mg_dir() / "templates" / "index.json", default={}) or {}
+    """Shipped templates plus the owner's personal ones (`vedit template save`), which win on name clashes."""
+    from .paths import personal_dir
+    shipped = read_json(mg_dir() / "templates" / "index.json", default={}) or {}
+    personal = read_json(personal_dir() / "templates" / "index.json", default={}) or {}
+    return {**shipped, **{k: {**v, "personal": True} for k, v in personal.items()}}
+
+
+def template_path(name: str) -> Path:
+    from .paths import personal_dir
+    mine = personal_dir() / "templates" / f"{name}.html"
+    return mine if mine.exists() else mg_dir() / "templates" / f"{name}.html"
 
 
 def _node() -> str:
@@ -168,7 +178,12 @@ def render_overlay(edit: Edit, ov: Overlay, out_dir: Path, *, capcut_alpha: str 
     if not force and all(p.exists() for p in existing):
         outputs = existing
     elif engine == "html":
-        comp = Path(spec.file) if spec.file else mg_dir() / "templates" / f"{spec.template}.html"
+        if spec.file:
+            comp = Path(spec.file)
+            if not comp.is_absolute():            # project-relative, e.g. custom/hook.html
+                comp = out_dir.parent / comp
+        else:
+            comp = template_path(spec.template)
         if not comp.exists():
             raise VeditError(f"Composition not found: {comp}")
         outputs = render_html(comp, stem, width=W, height=H, fps=fps, duration=ov.duration, data=spec.data, formats=formats)

@@ -1,7 +1,7 @@
 """Edit projects: a workspace folder `<footage>/edit/` holding everything for one video.
 
   edit/
-    project.json     settings + decision log (Claude's memory between sessions)
+    project.json     settings, decision log, workflow (mode, plan status, stage)
     edit.json        the timeline (single source of truth)
     transcripts/     normalised word-level transcripts per source
     takes_packed.md  compact transcript view Claude reads to plan the edit
@@ -11,6 +11,10 @@
     render/          final.mp4, preview.mp4, captions.ass/.srt
     qa/              self-check frames + report
     capcut/          snapshot of the generated CapCut content (learn-from-edits)
+    studio/          Studio bundle: proxies, peaks, sprites, data docs, upload map
+    custom/          code Claude wrote for this edit (compositions, python FX)
+    inbox/           files pulled in from the browser's Downloads (web AI, research)
+    suggestions.json / directions.json   Studio suggestion cards and creative directions
 """
 
 from __future__ import annotations
@@ -28,7 +32,8 @@ RATIOS = {
     "4:3": (1440, 1080), "21:9": (2560, 1080), "4k": (3840, 2160), "9:16-4k": (2160, 3840),
 }
 
-SUBDIRS = ("transcripts", "storyboard", "mg", "assets", "render", "qa", "capcut")
+SUBDIRS = ("transcripts", "storyboard", "mg", "assets", "render", "qa", "capcut", "studio", "custom", "inbox",
+           "watch", "sound", "handoff")
 
 
 def slug(text: str, max_len: int = 40) -> str:
@@ -131,8 +136,11 @@ def init(footage: str | Path, *, name: str | None = None, ratio: str = "9:16", f
                 sources=sources)
     proj = Project(root)
     proj.save_edit(edit)
+    from . import config
     proj.save_meta({"name": edit.name, "created": time.strftime("%Y-%m-%d %H:%M:%S"), "ratio": ratio,
-                    "footage": str(footage), "decisions": [], "settings": {}})
+                    "footage": str(footage), "decisions": [], "settings": {},
+                    "workflow": {"mode": config.load().get("mode", {}).get("default", "plan"), "plan_status": "draft",
+                                 "stage": "cut", "approved_stages": [], "history": []}})
     return proj
 
 

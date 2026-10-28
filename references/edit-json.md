@@ -81,10 +81,36 @@ golden, matte, punchy), `lut` (.cube path), `capcut_filter` (name or alias), `in
 
 **capcut** - `project_name`, `pro_allowed`, `include_captions`, `overlay_mode` auto|alpha|chroma|flatten.
 
+**anchor** (on overlays, texts, audio, effects, custom_fx) - `{source, t, offset, policy}`: pins the item
+to a moment inside a source (usually a word's start). Its `start` is recomputed through the cut, so it
+follows its word when clips are trimmed, removed or re-paced. `offset` shifts it on the timeline;
+`policy` decides what happens when the moment is cut out: `nearest` (default, snap to the closest kept
+point), `drop` (disable it), `keep` (leave `start` alone). Get anchors with `vedit words <p> --find "try it"`.
+
+**enabled** (same items) - `false` hides an item without deleting it (the Studio's Hide).
+
+**custom_fx[]** - code you write for this edit: `{id, kind python|ffmpeg|html, file, hook, filter,
+params, inputs, output overlay|audio|source, start, duration, anchor, transform, fit, layer, volume}`.
+See `references/extending.md`.
+
+**knobs** - Studio tuning values applied at bake time without touching your decisions: `pace` 0-1,
+`transitions`, `zoom_strength`, `grade_preset`, `grade_intensity`, `captions_on`, `caption_style`,
+`caption_size`, `caption_y`, `caption_words`, `voice_level`, `music_level`, `sfx_level`, `duck_db`,
+`graphics_on`. `vedit knobs list|get|set|unset|bake <p>`; definitions in `presets/knobs.json`.
+
+**captions** (v2 additions) - `word_fixes` {"<source>@<start>": "text"} corrects misheard words (empty
+text hides a word), `emphasis_keys` and `emoji_keys` mark words, and all three survive re-cuts. Set
+`from_words: false` when you wrote the chunks yourself (a translation, reworded captions) so they are
+kept as written.
+
+**revision** - bumped on every save; the Studio uses it to know which edit is newest.
+
 **output** - `audio` {denoise, voice_enhance, target_lufs, duck_db}, `encoder`, `crf`, `preset`.
 
 ## Editing tips
-- Keep ids stable when revising so QA notes and the storyboard stay meaningful.
-- After changing `main`, rebuild captions (`vedit captions build`) unless you hand-edited chunks.
-- Overlay times are timeline times: compute them from caption/word times (a word at source 41.2 s →
-  timeline time via its clip: `clip.start + (41.2 - clip.src_in) / clip.speed`).
+- Keep ids stable when revising so QA notes, suggestion cards and the Studio stay meaningful.
+- Pin graphics, texts and SFX that belong to words with an `anchor` instead of a fixed `start`; then
+  re-cuts and the pace knob never knock them off their word.
+- After changing `main`, rebuild captions (`vedit captions build`) unless you hand-edited chunks
+  (`from_words: false`).
+- Every output (render, QA, CapCut, Studio) uses the baked edit: `vedit knobs bake <p>` shows its timing.

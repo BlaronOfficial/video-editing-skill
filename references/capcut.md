@@ -1,4 +1,8 @@
-# CapCut integration
+# CapCut integration (optional hand-off)
+
+CapCut is optional: the native render is the deliverable, and intake asks per project whether the owner
+also wants an editable CapCut project. Build it only when they say yes (or when they want a CapCut-only
+feature such as its AI effects, and agree).
 
 CapCut desktop has no official editing API. The skill writes CapCut's own project files, seeded from a
 blank project made by the user's installed CapCut, so version markers always match.
@@ -15,6 +19,8 @@ vedit capcut build <p> --pro yes|no [--name my_project] [--overwrite] [--close]
 ```
 - CapCut must be closed while the project index is written. If it is open, the command stops; ask the
   user to let you close it (CapCut autosaves), then add `--close`.
+- Builds from the baked edit: Studio knobs applied, anchors resolved, hidden items left out, custom FX
+  rendered and placed as layers.
 - Writes tracks: main video, b-roll, overlay layers, captions (editable text), titles, music/SFX/VO
   (with the same ducking keyframes as the render), effects, filter. Zoom and auto-reframe become
   keyframes. A snapshot is saved in `edit/capcut/snapshot.json` for learn-from-edits.

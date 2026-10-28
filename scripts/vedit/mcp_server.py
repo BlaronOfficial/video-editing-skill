@@ -1,7 +1,9 @@
 """MCP server over the vedit engine (stdio). Same commands as the CLI, exposed as typed tools.
 
-Register in Claude Code:   claude mcp add --scope user video-editing -- "<skill>/vedit.cmd" mcp
-Claude Desktop config:     {"mcpServers": {"video-editing": {"command": "<skill>/vedit.cmd", "args": ["mcp"]}}}
+Register in Claude Code:   claude mcp add --scope user vedit -- "<skill>/vedit.cmd" mcp
+Claude Desktop config:     {"mcpServers": {"vedit": {"command": "<skill>/vedit.cmd", "args": ["mcp"]}}}
+Name it `vedit`: the Artifact Studio calls this server as `host:vedit` (studio_* tools) when it is opened in
+the Claude desktop app, so the owner's Studio edits reach edit.json directly.
 """
 
 from __future__ import annotations
@@ -117,6 +119,95 @@ def capcut_build(project: str, pro: str, name: str | None = None, close_capcut: 
 def capcut_diff(project: str, learn_into_style: str | None = None) -> str:
     """Compare the user's CapCut edits with the generated project; optionally learn them into a style."""
     return _run(["capcut", "diff", project] + (["--learn", learn_into_style] if learn_into_style else []))
+
+
+# ------------------------------------------------------------------ director + Studio live link
+
+@server.tool()
+def capabilities(refresh: bool = False) -> str:
+    """What this machine and session can use (engine probe + what Claude recorded about connectors and web AIs)."""
+    return _run(["capabilities", "show"] + (["--refresh"] if refresh else []))
+
+
+@server.tool()
+def route_plan(need: str) -> str:
+    """Ranked ways to make something (icon, image, scene_clip, motion_graphic, 3d, vfx, music, sfx, voiceover, ...)."""
+    return _run(["route", "plan", need])
+
+
+@server.tool()
+def workflow(project: str, action: str = "status", stage: str | None = None) -> str:
+    """Plan status / approvals. action: status | approve | request-changes | in-review. stage for step mode."""
+    return _run(["workflow", action, project] + (["--stage", stage] if stage else []))
+
+
+def _studio_docs(project: str, names: tuple[str, ...]) -> dict:
+    from . import studio
+    from .project import find
+    docs = studio.documents(find(project))
+    return {k: v for k, v in docs.items() if k in names}
+
+
+@server.tool()
+def studio_apply(project: str, ops: list[dict]) -> str:
+    """Apply Studio ops (see scripts/vedit/ops.py) to edit.json. Returns the report and the refreshed documents
+    (meta, edit, suggestions, directions) for the page to write back to its database."""
+    import tempfile
+    from pathlib import Path
+    from . import studio
+    from .project import find
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "ops.json"
+        f.write_text(json.dumps([{"seq": i, "op": op} for i, op in enumerate(ops)], ensure_ascii=False), encoding="utf-8")
+        report = studio.apply(find(project), f)
+    report["docs"] = _studio_docs(project, ("meta", "edit", "suggestions", "directions"))
+    return json.dumps(report, ensure_ascii=False, default=str)
+
+
+@server.tool()
+def studio_state(project: str) -> str:
+    """Current revision, workflow and documents of a project, for the Studio's live link."""
+    from . import studio
+    from .project import find
+    p = find(project)
+    return json.dumps({"status": studio.status(p), "docs": _studio_docs(project, ("meta", "edit"))},
+                      ensure_ascii=False, default=str)
+
+
+@server.tool()
+def proxy_build(project: str, sources: list[str] | None = None) -> str:
+    """Build Studio previews (proxies, peaks, sprites) and list files that still need uploading."""
+    return _run(["studio", "build", project] + (["--only", *sources] if sources else []))
+
+
+@server.tool()
+def studio_file(project: str, name: str) -> str:
+    """Base64 of one file from the project's Studio bundle (so the page can upload a new preview itself).
+    Only files inside <project>/edit/studio/ are served, up to 20 MiB."""
+    import base64
+    from .project import find
+    p = find(project)
+    root = (p.root / "studio").resolve()
+    f = (root / name).resolve()
+    if root not in f.parents or not f.is_file():
+        return "ERROR: not a Studio bundle file"
+    if f.stat().st_size > 20 * 1024 * 1024:
+        return "ERROR: file over 20 MiB"
+    return base64.b64encode(f.read_bytes()).decode("ascii")
+
+
+@server.tool()
+def sfx_preview(sound_id: str, duration: float | None = None, pitch: str | None = None) -> str:
+    """Render a sound-effect preview for the Studio (earshot bank arrives in phase 2; until then the vedit synth)."""
+    import tempfile
+    from pathlib import Path
+    out = Path(tempfile.gettempdir()) / f"vedit_sfx_{sound_id.replace('/', '_')}.wav"
+    argv = ["sfx", sound_id.split("/")[0], "--out", str(out)] + (["--duration", str(duration)] if duration else [])
+    res = _run(argv)
+    if res.startswith("ERROR"):
+        return res
+    import base64
+    return base64.b64encode(out.read_bytes()).decode("ascii")
 
 
 def main() -> None:

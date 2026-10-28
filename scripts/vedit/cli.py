@@ -141,8 +141,9 @@ def cmd_pack(a):
 
 def cmd_words(a):
     """Kept words with their TIMELINE times (after cuts) - use these to place graphics, SFX and b-roll."""
-    from .captions import transcript_words
-    e = _proj(a.path).edit()
+    from .captions import transcript_words, word_key
+    from .knobs import bake
+    e = bake(_proj(a.path).edit())
     rows = []
     for clip in e.main:
         src = e.sources[clip.source]
@@ -152,7 +153,9 @@ def cmd_words(a):
             mid = (w["s"] + w["e"]) / 2
             if clip.src_in <= mid <= clip.src_out:
                 t = (clip.start or 0) + (w["s"] - clip.src_in) / clip.speed
-                rows.append({"t": round(max(t, clip.start or 0), 2), "w": w["w"], "clip": clip.id})
+                rows.append({"t": round(max(t, clip.start or 0), 2), "w": w["w"], "clip": clip.id,
+                             "key": word_key(clip.source, w["s"]),
+                             "anchor": {"source": clip.source, "t": round(w["s"], 3)}})
     if a.find:
         needle = a.find.lower().split()
         hits = []
@@ -236,7 +239,8 @@ def cmd_captions(a):
 def cmd_storyboard(a):
     from .storyboard import build
     p = _proj(a.path)
-    out = build(p.edit(), p.sub("storyboard"), title=a.title)
+    from .knobs import bake
+    out = build(bake(p.edit()).active(), p.sub("storyboard"), title=a.title)
     if a.open:
         import webbrowser
         webbrowser.open(out.as_uri())
@@ -272,13 +276,17 @@ def cmd_mg(a):
 def cmd_render(a):
     from .render import render
     p = _proj(a.path)
+    if not a.preview:
+        from .modes import require_execute
+        require_execute(p, force=a.force)
     e = p.edit()
     missing = [o.id for o in e.overlays if o.mg and (not o.path or not Path(o.path).exists())]
     if missing:
         raise VeditError(f"Overlays not rendered yet: {missing}. Run `vedit mg render {a.path}` first.")
     out = Path(a.out) if a.out else p.sub("render") / ("preview.mp4" if a.preview else f"{e.name}.mp4")
     t0 = time.time()
-    res = render(e, out, preview=a.preview, work_dir=p.sub("render") / "work", burn_captions=not a.no_captions)
+    res = render(e, out, preview=a.preview, work_dir=p.sub("render") / "work", burn_captions=not a.no_captions,
+                 project_root=p.root)
     res["seconds"] = round(time.time() - t0, 1)
     p.log(f"rendered {'preview' if a.preview else 'final'} -> {out.name}")
     print_json(res)
@@ -340,6 +348,11 @@ def cmd_capcut(a):
         if mode == "auto":
             alpha = config.load()["capcut"]["alpha_overlays"]
             mode = {"prores": "prores", "webm": "webm"}.get(alpha, "chroma")   # unknown -> green key (always works)
+        from .knobs import bake
+        e = bake(e).active()
+        if e.custom_fx:
+            from .custom import materialize
+            e, _hooks = materialize(e, p.root)
         built, report = builder.build(e, pro_allowed=pro, overlay_mode=mode)
         if store.is_running():
             if not a.close:
@@ -587,7 +600,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--language"); s.add_argument("--model"); s.add_argument("--source", nargs="*"); s.add_argument("--force", action="store_true")
     s.set_defaults(fn=cmd_transcribe)
     s = sp.add_parser("pack"); s.add_argument("path"); s.set_defaults(fn=cmd_pack)
-    s = sp.add_parser("words", help="kept words with timeline times (place graphics/SFX on words)"); s.add_argument("path")
+    s = sp.add_parser("words", help="kept words with timeline times + anchors (pin graphics/SFX to words)"); s.add_argument("path")
     s.add_argument("--find", help="phrase to locate, e.g. 'try it'"); s.add_argument("--start", type=float)
     s.add_argument("--end", type=float); s.set_defaults(fn=cmd_words)
     s = sp.add_parser("view"); s.add_argument("file"); s.add_argument("--start", type=float, required=True)
@@ -612,7 +625,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--fps", type=float, default=30); s.add_argument("--t", type=float, default=1.0)
     s.add_argument("--formats", default="webm,prores"); s.set_defaults(fn=cmd_mg)
     s = sp.add_parser("render"); s.add_argument("path"); s.add_argument("--preview", action="store_true"); s.add_argument("--out")
-    s.add_argument("--no-captions", action="store_true"); s.set_defaults(fn=cmd_render)
+    s.add_argument("--no-captions", action="store_true")
+    s.add_argument("--force", action="store_true", help="final render without an approved plan (owner asked)")
+    s.set_defaults(fn=cmd_render)
     s = sp.add_parser("qa"); s.add_argument("path"); s.add_argument("--render"); s.set_defaults(fn=cmd_qa)
 
     s = sp.add_parser("capcut")
@@ -668,6 +683,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--expect", default="CapCut", help="only send input if this process owns the foreground ('' = no check)")
     s.set_defaults(fn=cmd_screen)
     s = sp.add_parser("mcp", help="run the MCP server (stdio)"); s.set_defaults(fn=cmd_mcp)
+
+    # v2 command groups live next to their modules
+    from . import (capabilities, custom, extend, extensions, knobs, learn, models, modes, routes, studio,
+                   studio_local, suggest)
+    for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend):
+        mod.register_cli(sp)
+    extensions.register_cli(sp)
     return ap
 
 
@@ -686,6 +708,10 @@ def main(argv: list[str] | None = None) -> int:
         args.fn(args)
         return 0
     except VeditError as exc:
+        from .models import NeedsDownload
+        if isinstance(exc, NeedsDownload):          # Claude asks the owner (size, ETA), then `vedit models get`
+            print(json.dumps({"needs_download": exc.info}, indent=2, ensure_ascii=False))
+            return 3
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:

@@ -23,7 +23,8 @@ def _detect(src: Path, video_filter: str, pattern: str) -> list[tuple[float, flo
 
 
 def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lufs: float = -14.0) -> dict:
-    edit = edit.layout()
+    from .knobs import bake
+    edit = bake(edit.layout()).active()
     render_path, out_dir = Path(render_path), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     info = probe(render_path)

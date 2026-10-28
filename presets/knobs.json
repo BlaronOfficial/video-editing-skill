@@ -1,0 +1,19 @@
+{
+  "_doc": "Studio tuning knobs. Values live in edit.knobs and are applied non-destructively at bake time (scripts/vedit/knobs.py, mirrored live in studio/js/bake.js), so the Studio preview, the render and every hand-off agree. Unset = the edit as Claude wrote it.",
+  "pace":            {"label": "Pace", "group": "Cut", "type": "range", "min": 0, "max": 1, "step": 0.05, "help": "Removes pauses inside kept takes. 0 keeps natural breaths (pauses up to 1.2 s); 1 is tight jump cuts (pauses over 0.18 s cut)."},
+  "transitions":     {"label": "Transitions", "group": "Cut", "type": "choice", "options": ["keep", "none", "fade", "push", "zoom_in", "slide_left", "flash", "blur", "glitch"], "help": "keep = Claude's choices; others apply one style to every cut."},
+  "zoom_strength":   {"label": "Zoom strength", "group": "Picture", "type": "range", "min": 0, "max": 2, "step": 0.1, "help": "Scales every punch-in / Ken Burns move. 0 = static."},
+  "grade_preset":    {"label": "Look", "group": "Picture", "type": "choice", "options": ["none", "clean", "warm_cinematic", "moody", "teal_orange", "golden", "cool", "vibrant", "punchy", "pastel", "matte", "vintage", "bw"]},
+  "grade_intensity": {"label": "Look strength", "group": "Picture", "type": "range", "min": 0, "max": 1.5, "step": 0.05},
+  "captions_on":     {"label": "Captions", "group": "Captions", "type": "toggle"},
+  "caption_style":   {"label": "Caption style", "group": "Captions", "type": "choice", "options": "@caption_presets"},
+  "caption_size":    {"label": "Caption size", "group": "Captions", "type": "range", "min": 0.6, "max": 1.6, "step": 0.05, "help": "Relative to the style's size."},
+  "caption_y":       {"label": "Caption height", "group": "Captions", "type": "range", "min": -0.9, "max": 0.7, "step": 0.02, "help": "Half-canvas units from the centre; -0.42 is the lower third of a 9:16 frame."},
+  "caption_words":   {"label": "Words per caption", "group": "Captions", "type": "range", "min": 1, "max": 8, "step": 1},
+  "voice_level":     {"label": "Voice", "group": "Sound", "type": "range", "min": 0, "max": 2, "step": 0.05},
+  "music_level":     {"label": "Music", "group": "Sound", "type": "range", "min": 0, "max": 2, "step": 0.05},
+  "sfx_level":       {"label": "Sound effects", "group": "Sound", "type": "range", "min": 0, "max": 2, "step": 0.05},
+  "duck_db":         {"label": "Music duck under speech (dB)", "group": "Sound", "type": "range", "min": -30, "max": 0, "step": 1},
+  "graphics_on":     {"label": "Graphics", "group": "Graphics", "type": "toggle", "help": "Hide every overlay to judge the bare cut."},
+  "safe_zone":       {"label": "Platform safe zone", "group": "View", "type": "choice", "options": ["none", "tiktok", "reels", "shorts", "youtube"], "studio_only": true}
+}

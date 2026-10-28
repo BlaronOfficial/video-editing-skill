@@ -124,3 +124,44 @@ Visual: colour grade presets/LUTs, B-roll placement, background removal hooks, s
 Extras: long-to-shorts clipping, auto-reframe (face tracking), thumbnails, titles/descriptions/
 hashtags, AI voiceover / voice clone (ElevenLabs), batch mode ("a week of reels"), multi-ratio
 exports, chapters, multicam sync by audio.
+
+## 8. v2 (agreed 2026-10-28, built in phases on branch `v2`)
+
+Owner's direction: unlock the full potential of Opus 5.5 as director; dynamic and hybrid, not fixed
+pipelines; standalone free core, everything paid or proprietary optional. Full plan:
+`~/.claude/plans/lovely-crafting-pearl.md` (owner's machine).
+
+| Area | Decision |
+|---|---|
+| Philosophy | Director layer: capability discovery, route planning, mixing, custom code, verify, learn |
+| Modes | Plan (default, Studio first), Step-by-step (stage approvals), Auto; Execute needs approval |
+| Studio | Claude Artifact only (one per owner, projects as db collections), live preview only, all edit tools, in-page Claude (`sample`), Send to Claude (comments), live link via `host:vedit` MCP in the Claude desktop app |
+| Hand-offs | CapCut asked at intake; DaVinci (free import package, Studio live, screen control, learn), Premiere/FCP/any NLE, LosslessCut (phase 3) |
+| Web AI | Owner's logged-in services (Gemini, ChatGPT, Canva, Firefly, Ideogram, ...) used opportunistically with provenance; never log in; ask before credits/bulk |
+| VFX / 3D | Three.js, Blender (installed: 5.2), Fusion (Studio), Higgsfield; tracking, cutout, depth (phase 4) |
+| Sound / eyes | earshot full (kits + ears), claude-real-video watching, speakers, memory, link ingest (phase 2) |
+| Writing pass | English only (from blader/humanizer MIT rules; humanizer-cli was a malware lure, not used) |
+| Learning | Studio decisions, editor diffs, chat rules, route outcomes, YouTube analytics (phase 5) |
+
+### Phase 1 status (2026-10-28): standalone core, director layer, modes, Studio
+
+Built: config v2 (+ migration), add-on registry, ask-first resumable model downloads (exit 3 =
+needs_download), capability map (engine + session records + outcomes), route planner
+(`presets/routes.json`), modes + approval gate (`vedit render` final refuses in plan/step until
+approved), edit model v2 (anchors that follow re-cuts, enabled flags, CustomFX, knobs, revision,
+word-keyed caption fixes/emphasis/emoji, `from_words`), knob baking (`bake()` used by render, QA,
+CapCut, storyboard, Studio), the op language (`ops.py`, mirrored in `studio/js/ops.js`), suggestion
+cards and creative directions, custom FX (python overlay/audio/source, ffmpeg hooks, html) + `fxkit`,
+personal templates/FX/techniques, self-extension with vetting (`vedit tools vet/add`), personal
+extensions, learning (events, profile, rules), Studio engine (proxies, sprites, peaks, docs, apply,
+revert history), local Studio server, MCP live-link tools, the Studio web app.
+
+Verified on the owner's machine:
+- `tests/test_v2.py`: 22/22, including Python vs JS parity of ops + bake (clips, overlays, audio,
+  duration, knobs, fixes, all 46 caption chunks).
+- Headless Studio (`tests/studio_smoke.mjs` on `vedit studio-local`): loads, plays proxies with
+  reframe keys, live karaoke captions and live template graphics, transcript cut applied through the
+  engine (rev +1), pace knob shortens the edit, no horizontal scroll at phone width, clean console.
+- Studio published as a private artifact; previews uploaded (mp4/jpg/json; the asset store rejects mp3,
+  so audio previews are AAC .mp4); 8 db docs written atomically and read back.
+- `vedit doctor` READY with CapCut optional; found Blender 5.2 installed.

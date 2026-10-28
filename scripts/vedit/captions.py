@@ -134,6 +134,7 @@ def transcript_words(path: str | Path) -> list[dict]:
 def build_chunks(edit: Edit) -> list[CaptionChunk]:
     """Map every kept word through the main track and chunk it with the edit's caption style."""
     style = resolve_style(edit.captions.style, edit.captions.overrides)
+    cap = edit.captions
     words: list[Word] = []
     for clip in edit.main:
         src = edit.sources[clip.source]
@@ -142,17 +143,29 @@ def build_chunks(edit: Edit) -> list[CaptionChunk]:
         for w in transcript_words(src.transcript):
             mid = (w["s"] + w["e"]) / 2
             if clip.src_in <= mid <= clip.src_out:
+                key = word_key(clip.source, w["s"])
+                text = cap.word_fixes.get(key, w["w"].strip())
+                if not text.strip():
+                    continue
                 s = (clip.start or 0) + (max(w["s"], clip.src_in) - clip.src_in) / clip.speed
                 e = (clip.start or 0) + (min(w["e"], clip.src_out) - clip.src_in) / clip.speed
-                words.append(Word(w=w["w"].strip(), s=round(s, 3), e=round(max(e, s + 0.05), 3)))
+                words.append(Word(w=text.strip(), s=round(s, 3), e=round(max(e, s + 0.05), 3), k=key))
     words.sort(key=lambda w: w.s)
-    max_words = edit.captions.max_words or style["max_words"]
-    max_chars = edit.captions.max_chars or style["max_chars"]
+    max_words = cap.max_words or style["max_words"]
+    max_chars = cap.max_chars or style["max_chars"]
     chunks = chunk_words(words, max_words=max_words, max_chars=max_chars, mode=style["mode"])
     total = edit.duration
+    emphasis = set(cap.emphasis_keys)
     for c in chunks:          # the hold after the last word must not outlast the video
         c.end = round(min(c.end, total), 3)
+        c.emphasis = [i for i, w in enumerate(c.words) if w.k in emphasis]
+        c.emoji = next((cap.emoji_keys[w.k] for w in c.words if w.k in cap.emoji_keys), None)
     return [c for c in chunks if c.end - c.start > 0.05]
+
+
+def word_key(source_id: str, src_start: float) -> str:
+    """Stable identity of a transcript word across re-cuts (Studio edits and fixes are keyed by it)."""
+    return f"{source_id}@{src_start:.2f}"
 
 
 # ------------------------------------------------------------------ ASS output

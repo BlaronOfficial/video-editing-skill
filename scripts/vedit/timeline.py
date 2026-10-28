@@ -8,6 +8,8 @@ Conventions
   * All times are seconds (float). CapCut microseconds are derived at build time.
   * `src_in`/`src_out` are positions inside the source file; `start` is a timeline position.
   * Positions use CapCut's convention: x/y in half-canvas units from the centre, +y is up.
+  * Items that belong to a spoken moment carry an `anchor` (a time inside a source). `layout()` maps it
+    through the main track, so graphics and sounds follow the words when the cut changes.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .util import read_json, write_json
 
-EDIT_VERSION = 1
+EDIT_VERSION = 2
 
 
 class _Model(BaseModel):
@@ -73,6 +75,14 @@ class Transition(_Model):
     type: str = "fade"                       # renderer: fade | wipeleft | slideup | circleopen | ... (ffmpeg xfade names)
     duration: float = 0.3
     capcut: Optional[str] = None             # explicit CapCut transition name (pyCapCut TransitionType)
+
+
+class Anchor(_Model):
+    """Pin an item to a moment inside a source; its timeline start follows re-cuts."""
+    source: str
+    t: float                                 # seconds inside the source (e.g. a word's start)
+    offset: float = 0.0                      # timeline seconds relative to the anchor point
+    policy: Literal["nearest", "drop", "keep"] = "nearest"   # when the moment is cut out
 
 
 class CropKey(_Model):
@@ -138,6 +148,9 @@ class Overlay(_Model):
     chroma: Optional[str] = None             # "#00FF00" if the overlay relies on a key colour
     fade_in: float = 0.0
     fade_out: float = 0.0
+    anchor: Optional[Anchor] = None
+    enabled: bool = True
+    fx: Optional[str] = None                 # id of the CustomFX that produced `path`
     label: str = ""
 
 
@@ -145,6 +158,7 @@ class Word(_Model):
     w: str
     s: float
     e: float
+    k: Optional[str] = None                  # stable key "<source>@<src start>" for fixes/emphasis
 
 
 class CaptionChunk(_Model):
@@ -166,7 +180,12 @@ class Captions(_Model):
     max_chars: int = 22
     uppercase: Optional[bool] = None
     language: Optional[str] = None
+    from_words: bool = True                  # False = chunks were written by hand (translation, rewording): keep them
     chunks: list[CaptionChunk] = Field(default_factory=list)
+    # Word-keyed edits survive re-cuts and re-chunking (keys from `Word.k`, i.e. "<source>@<start>").
+    word_fixes: dict[str, str] = Field(default_factory=dict)      # misheard word -> correct text ("" hides it)
+    emphasis_keys: list[str] = Field(default_factory=list)
+    emoji_keys: dict[str, str] = Field(default_factory=dict)
 
 
 class TextItem(_Model):
@@ -179,6 +198,8 @@ class TextItem(_Model):
     capcut_intro: Optional[str] = None
     capcut_outro: Optional[str] = None
     capcut_loop: Optional[str] = None
+    anchor: Optional[Anchor] = None
+    enabled: bool = True
     label: str = ""
 
 
@@ -194,6 +215,9 @@ class AudioClip(_Model):
     fade_in: float = 0.0
     fade_out: float = 0.0
     loop: bool = False
+    anchor: Optional[Anchor] = None
+    enabled: bool = True
+    fx: Optional[str] = None                 # id of the CustomFX that produced the source
     label: str = ""
 
     @property
@@ -209,6 +233,39 @@ class EffectItem(_Model):
     capcut_params: Optional[list[float]] = None
     render: Optional[str] = None             # renderer approximation: flash | shake | blur | glitch | vignette | zoom_pulse | rgb_split | film_grain
     intensity: float = 1.0
+    anchor: Optional[Anchor] = None
+    enabled: bool = True
+
+
+class CustomFX(_Model):
+    """Code Claude writes for this edit when no template or built-in effect fits.
+
+    kind=python  `file` runs as `python file --in .. --out .. --params ..` in the vedit venv (numpy, OpenCV,
+                 PIL). output=overlay: an alpha video or PNG placed like an Overlay. output=audio: a WAV on the
+                 mix. output=source: a processed copy of `inputs[0]` swapped into the clips in params.targets.
+    kind=ffmpeg  `filter` is a single-input filter chain spliced into the final graph at `hook`.
+    kind=html    `file` is a composition rendered by the motion-graphics renderer (like Overlay.mg.file).
+    """
+    id: str
+    kind: Literal["python", "ffmpeg", "html", "blender"] = "python"
+    file: Optional[str] = None               # project-relative, absolute, or "personal:fx/<name>.py"
+    hook: Optional[Literal["video_pre_overlays", "video_pre_captions", "video_post", "audio_voice",
+                           "audio_master"]] = None
+    filter: Optional[str] = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    inputs: list[str] = Field(default_factory=list)       # source ids or files
+    output: Literal["overlay", "audio", "source", "none"] = "overlay"
+    start: float = 0.0
+    duration: Optional[float] = None         # None = to the end of the video
+    anchor: Optional[Anchor] = None
+    transform: Transform = Field(default_factory=Transform)
+    fit: Literal["none", "cover", "contain"] = "none"
+    layer: int = 0
+    volume: float = 1.0
+    path: Optional[str] = None               # last produced file
+    cache_key: Optional[str] = None
+    enabled: bool = True
+    label: str = ""
 
 
 class ColorGrade(_Model):
@@ -258,6 +315,9 @@ class Edit(_Model):
     brand: Optional[str] = None
     capcut: CapCutSettings = Field(default_factory=CapCutSettings)
     output: Output = Field(default_factory=Output)
+    custom_fx: list[CustomFX] = Field(default_factory=list)
+    knobs: dict[str, Any] = Field(default_factory=dict)       # Studio tuning values (presets/knobs.json)
+    revision: int = 0                                         # bumped on every save (Studio sync)
     notes: str = ""
 
     @model_validator(mode="after")
@@ -284,7 +344,48 @@ class Edit(_Model):
         for clip in self.main:
             clip.start = round(t, 6)
             t = clip.start + clip.duration
+        self._resolve_anchors()
         return self
+
+    def _resolve_anchors(self) -> None:
+        if not self.main:
+            return
+        for item in [*self.overlays, *self.texts, *self.audio, *self.effects, *self.custom_fx]:
+            a = getattr(item, "anchor", None)
+            if a is None:
+                continue
+            at = self.source_to_timeline(a.source, a.t)
+            if at is None and a.policy == "nearest":
+                at = self._nearest_kept(a.source, a.t)
+            if at is None:
+                if a.policy == "drop":
+                    item.enabled = False
+                continue
+            item.start = round(max(0.0, at + a.offset), 4)
+            if a.policy == "drop":
+                item.enabled = True
+
+    def _nearest_kept(self, source_id: str, t: float) -> Optional[float]:
+        """Timeline time of the kept point of `source_id` closest to source time `t`."""
+        best: tuple[float, float] | None = None
+        for clip in self.main:
+            if clip.source != source_id:
+                continue
+            for src_t, tl in ((clip.src_in, clip.start or 0.0), (clip.src_out, clip.end)):
+                d = abs(src_t - t)
+                if best is None or d < best[0]:
+                    best = (d, tl)
+        return best[1] if best else None
+
+    def active(self) -> "Edit":
+        """A copy without disabled items (cut-out anchors with policy=drop, items switched off in the Studio)."""
+        e = self.model_copy(deep=True)
+        e.overlays = [o for o in e.overlays if o.enabled]
+        e.texts = [x for x in e.texts if x.enabled]
+        e.audio = [a for a in e.audio if a.enabled]
+        e.effects = [x for x in e.effects if x.enabled]
+        e.custom_fx = [f for f in e.custom_fx if f.enabled]
+        return e
 
     @property
     def duration(self) -> float:
@@ -319,6 +420,7 @@ def load_edit(path: str | Path) -> Edit:
 
 def save_edit(edit: Edit, path: str | Path) -> Path:
     edit.layout()
+    edit.revision += 1
     return write_json(path, edit.model_dump(mode="json", exclude_none=True))
 
 

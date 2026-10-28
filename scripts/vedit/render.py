@@ -328,14 +328,16 @@ def _effect_filters(edit: Edit, s: RenderSettings) -> list[str]:
 
 
 def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, ass_path: Path | None,
-            titles_path: Path | None = None) -> Path:
+            titles_path: Path | None = None, hooks: dict[str, list[str]] | None = None) -> Path:
     W, H, fps = s.W, s.H, s.fps
+    hooks = hooks or {}
     args = [ffmpeg(), "-y", "-v", "error", "-stats", "-nostdin", "-i", str(aroll)]
     n_in = 1
     v_parts: list[str] = []
     a_parts: list[str] = []
     grade = _grade_chain(edit.color.preset, edit.color.lut, edit.color.intensity, work)
-    base = "[0:v]" + (grade if grade else "null")
+    pre = ",".join(x for x in [grade, *hooks.get("video_pre_overlays", [])] if x)
+    base = "[0:v]" + (pre if pre else "null")
     v_parts.append(base + "[base0]")
     cur = "[base0]"
 
@@ -410,7 +412,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
         cur = f"[oo{i}]"
 
     fx = _effect_filters(edit, s)
-    tail = list(fx)
+    tail = list(hooks.get("video_pre_captions", [])) + list(fx)
     try:
         fdir = os.path.relpath(fonts_dir(), work).replace("\\", "/")
     except ValueError:  # footage on another drive than the skill: no relative path exists, copy the fonts
@@ -421,6 +423,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     for sub in (titles_path, ass_path):
         if sub:
             tail.append(f"subtitles={sub.name}:fontsdir='{fdir}'")
+    tail += list(hooks.get("video_post", []))
     tail.append(f"format=yuv420p")
     v_parts.append(f"{cur}{','.join(tail)}[vfinal]")
 
@@ -432,6 +435,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     if au.voice_enhance and not s.preview:
         voice += ["equalizer=f=180:t=q:w=1:g=-1.5", "equalizer=f=3200:t=q:w=1.2:g=2.5",
                   "acompressor=threshold=0.09:ratio=3:attack=8:release=180:makeup=1.6", "deesser=i=0.35"]
+    voice += list(hooks.get("audio_voice", []))
     a_parts.append(f"[0:a]{','.join(voice)}[voice]")
     music_labels, sfx_labels, vo_labels = [], [], []
     for i, clip in enumerate(edit.audio):
@@ -482,7 +486,8 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     else:
         a_parts.append(f"{mix_inputs[0]}anull[mix]")
     # limit 0.84 = -1.5 dBFS ceiling, so true peaks stay at the -1.5 dBTP platform target after loudnorm.
-    a_parts.append(f"[mix]loudnorm=I={s.lufs}:TP=-1.5:LRA=11,alimiter=limit=0.84:level=false,aresample=48000[afinal]")
+    master = "".join(f"{h}," for h in hooks.get("audio_master", []))
+    a_parts.append(f"[mix]{master}loudnorm=I={s.lufs}:TP=-1.5:LRA=11,alimiter=limit=0.84:level=false,aresample=48000[afinal]")
 
     graph_file = work / "compose.fg"
     write_text(graph_file, ";\n".join(v_parts + a_parts))
@@ -496,8 +501,13 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
 # ------------------------------------------------------------------ entry point
 
 def render(edit: Edit, out: str | Path, *, preview: bool = False, work_dir: str | Path | None = None,
-           burn_captions: bool = True) -> dict:
-    edit = edit.layout()
+           burn_captions: bool = True, project_root: str | Path | None = None) -> dict:
+    from .knobs import bake
+    edit = bake(edit.layout()).active()
+    hooks: dict[str, list[str]] = {}
+    if edit.custom_fx and project_root:
+        from .custom import materialize
+        edit, hooks = materialize(edit, Path(project_root))
     s = RenderSettings(edit, preview)
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -516,7 +526,7 @@ def render(edit: Edit, out: str | Path, *, preview: bool = False, work_dir: str 
                 ass_path = caps.to_ass(edit, chunks, work / "captions.ass", style)
     titles_path = caps.titles_to_ass(edit, work / "titles.ass", canvas=(s.W, s.H))
     aroll = assemble_main(edit, s, work)
-    compose(edit, aroll, s, work, out, ass_path, titles_path)
+    compose(edit, aroll, s, work, out, ass_path, titles_path, hooks=hooks)
     info = probe(out)
     return {"output": str(out.resolve()), "duration": round(info.duration, 3), "width": info.width, "height": info.height,
             "encoder": s.encoder, "preview": preview}

@@ -1,6 +1,8 @@
 # Workflow in detail
 
-`<p>` is the project: the footage folder, its `edit/` folder, or `edit/edit.json`.
+`<p>` is the project: the footage folder, its `edit/` folder, or `edit/edit.json`. This is the command
+reference for each step; how to think about each one is in `references/director.md`, and which steps
+run when is in `references/modes.md`.
 
 ## 1. Intake
 
@@ -10,8 +12,10 @@ Ask in one AskUserQuestion call (skip what the user already said):
   (ElevenLabs key, best word timing, audio events, diarisation). Ask every project.
 - **Language** if not obvious: en, bn, mixed (pass `--language bn|en`; omit for auto).
 - **Style**: a preset (`vedit style list`), a brand kit (`vedit brand list`), a cloned creator, or "your call".
-- **CapCut Pro allowed?** (`--pro yes|no`). Pro effects/fonts in a free account get watermarked or blocked.
-- **Review**: storyboard (default) or auto.
+- **Mode**: plan (default, Studio first), step-by-step, or auto.
+- **Hand-offs**: none, CapCut, DaVinci Resolve, Premiere/Final Cut/NLE XML, LosslessCut (phase 3 adds
+  all but CapCut). **CapCut Pro allowed?** only if CapCut (`--pro yes|no`).
+- Anything the plan needs that costs money or big downloads (with sizes), asked once here.
 - Optional: music preference, CTA/handle, things to avoid, deadline-driven "fast mode".
 
 ## 2. Create the project
@@ -63,11 +67,13 @@ Edit `edit/edit.json` directly (schema: `references/edit-json.md`, or `vedit pla
 - Apply the style profile: pacing (`max_pause`, punch-in rhythm), caption style, palette, SFX density,
   and its `learned` block (from past CapCut diffs).
 
-## 6. Storyboard
+## 6. Studio (or storyboard)
 
-`vedit storyboard <p> --open` writes `edit/storyboard/index.html` (self-contained, images inlined) and
-opens it. In Claude Code you can also publish it as an Artifact for the user to view on any device.
-Summarise in chat: length, hook, structure, graphics, music, open questions. Apply feedback, rebuild.
+Plan and step mode review happens in the Studio (`references/studio.md`): `vedit studio build <p>`,
+upload, `vedit studio register`, `vedit studio docs`, sync, then give the owner the link. Summarise in
+chat: length, hook, structure, graphics, music, the cards you left for them.
+Where Artifacts are unavailable: `vedit studio-local <p>` (same Studio on localhost), or the static
+`vedit storyboard <p> --open`.
 
 ## 7. Assets
 
@@ -81,15 +87,17 @@ Pinterest: `references/pinterest.md`.
 ## 8. Render and QA
 
 ```
-vedit render <p> --preview     # 540p, fast: check timing and layout
-vedit render <p>               # final, platform loudness, hardware encoder when available
+vedit render <p> --preview     # 540p, fast: check timing and layout (allowed in plan mode)
+vedit execute <p>              # after approval: graphics + custom FX + final render + QA
+vedit render <p>               # final only (refuses in plan/step mode until approved)
 vedit qa <p>                   # issues + frame sheets in edit/qa/
 ```
 Open the QA sheets (Read the PNGs) and fix: flash frames, bad cuts, captions covering faces, overlays
 off-screen, pops, loudness. Re-render (max ~3 rounds) before presenting.
 
-## 9. CapCut
+## 9. Hand-offs (only those chosen at intake)
 
+CapCut:
 ```
 vedit capcut build <p> --pro no            # add --close only after the user agreed to close CapCut
 vedit capcut launch
