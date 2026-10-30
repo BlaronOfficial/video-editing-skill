@@ -6,8 +6,17 @@ libass), Python via `uv`, Node.js 20+, Google Chrome or Edge. That is all `vedit
 
 Optional add-ons (`vedit doctor` lists each with cost, licence, size and how to install): CapCut desktop
 (9.x verified), DaVinci Resolve (free or Studio), LosslessCut, Blender, earshot sound kits and ears,
-Remotion, ElevenLabs, Higgsfield, Pexels/Pixabay/Gemini API keys; plus whatever the Claude session brings
-(Claude in Chrome, Canva or Google Drive connectors, computer use, Windows-MCP).
+claude-real-video (watching, speakers, link fetch), Remotion, ElevenLabs, Higgsfield, Pexels/Pixabay/Gemini
+API keys; plus whatever the Claude session brings (Claude in Chrome, Canva or Google Drive connectors,
+computer use, Windows-MCP).
+
+Light tools that make the free core better, each in its own isolated venv under `.cache/tools/`:
+```
+vedit setup earshot         # sound kits: 252 code-made SFX with sync points (~70 MB, no models)
+vedit setup earshot --ears  # + listening QA: torch CPU and two models (~1.3 GB; ask first)
+vedit setup crv             # claude-real-video: watching, speaker labels, yt-dlp (~100 MB)
+```
+Without them the built-in synth kit, a native frame watcher and Whisper still work.
 
 ## First run
 ```

@@ -58,8 +58,6 @@ def whisper(src: Path, *, language: str | None = None, model: str | None = None,
     work.mkdir(parents=True, exist_ok=True)
     audio = _audio_for(src, work)
     t0 = time.time()
-    wm = WhisperModel(model_name, device="auto", compute_type=cfg["whisper_compute_type"],
-                      download_root=str(cache_dir() / "whisper"))
     # Feed samples directly: faster-whisper's own decoder depends on PyAV APIs that change between
     # versions (e.g. `metadata_errors` was removed); our FFmpeg-extracted 16 kHz mono WAV avoids that.
     import wave
@@ -67,6 +65,14 @@ def whisper(src: Path, *, language: str | None = None, model: str | None = None,
     import numpy as np
     with wave.open(str(audio), "rb") as w:
         samples = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
+    # No-speech gate (idea from claude-real-video): music-only b-roll or ambience gets no Whisper run, so no
+    # model load and no captions hallucinated over silence.
+    speech_s = _speech_seconds(samples)
+    if speech_s is not None and speech_s < 0.6:
+        return {"engine": "whisper", "model": model_name, "language": None, "language_probability": None,
+                "words": [], "segments": [], "no_speech": True, "elapsed_s": round(time.time() - t0, 1)}
+    wm = WhisperModel(model_name, device="auto", compute_type=cfg["whisper_compute_type"],
+                      download_root=str(cache_dir() / "whisper"))
     segments, info = wm.transcribe(
         samples, language=lang, word_timestamps=True, vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 250, "speech_pad_ms": 120},
@@ -84,6 +90,70 @@ def whisper(src: Path, *, language: str | None = None, model: str | None = None,
     return {"engine": "whisper", "model": model_name, "language": info.language,
             "language_probability": round(info.language_probability, 3), "words": words, "segments": segs,
             "elapsed_s": round(time.time() - t0, 1)}
+
+
+def _speech_seconds(samples) -> float | None:
+    """Seconds of speech Silero VAD (shipped with faster-whisper) hears; None if the gate cannot run."""
+    try:
+        from faster_whisper.vad import VadOptions, get_speech_timestamps
+        chunks = get_speech_timestamps(samples, VadOptions(min_silence_duration_ms=500))
+    except Exception:
+        return None
+    return sum(c["end"] - c["start"] for c in chunks) / 16000
+
+
+SUB_EXTS = (".srt", ".vtt")
+
+
+def find_subtitles(src: Path) -> Path | None:
+    """A caption file next to the video (same stem, e.g. talk.en.vtt / talk.srt), or its first embedded track."""
+    for f in sorted(src.parent.glob(f"{src.stem}*")):
+        if f.suffix.lower() in SUB_EXTS:
+            return f
+    work = cache_dir() / "audio" / f"{src.stem}.embedded.srt"
+    proc = run([ffmpeg(), "-y", "-v", "error", "-i", str(src), "-map", "0:s:0", str(work)], check=False)
+    return work if proc.returncode == 0 and work.exists() and work.stat().st_size > 20 else None
+
+
+def _ts(v: str) -> float:
+    v = v.strip().replace(",", ".")
+    parts = [float(x) for x in v.split(":")]
+    while len(parts) < 3:
+        parts.insert(0, 0.0)
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def subtitles(src: Path, *, language: str | None = None, model: str | None = None) -> dict:
+    """Transcript from existing captions (platform subtitles, a sidecar file). Word times are spread over each
+    caption by length (approx_timing): fine for finding and cutting sentences, rougher for word captions."""
+    import re
+    path = find_subtitles(src)
+    if not path:
+        raise VeditError(f"No captions found for {src.name} (sidecar .srt/.vtt or an embedded track).")
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    words, segs, last_text = [], [], ""
+    raw = raw.replace("\r\n", "\n")
+    for m in re.finditer(r"(\d[\d:.,]+)\s*-->\s*(\d[\d:.,]+)[^\n]*\n(.*?)(?:\n\s*\n|\Z)", raw, re.S):
+        s, e = _ts(m.group(1)), _ts(m.group(2))
+        full = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", m.group(3))).strip()
+        text = full
+        if not text or e <= s:
+            continue
+        if last_text and text.startswith(last_text):        # rolling auto-captions repeat the previous line
+            text = text[len(last_text):].strip()
+        last_text = full
+        if not text:
+            continue
+        toks = text.split()
+        total = sum(len(t) + 1 for t in toks)
+        t = s
+        for tok in toks:
+            d = (e - s) * (len(tok) + 1) / total
+            words.append({"w": tok, "s": round(t, 3), "e": round(t + d * 0.92, 3), "p": None, "type": "word"})
+            t += d
+        segs.append({"s": round(s, 3), "e": round(e, 3), "text": text})
+    return {"engine": "subs", "model": path.name, "language": language, "language_probability": None,
+            "words": words, "segments": segs, "approx_timing": True, "elapsed_s": 0.0}
 
 
 def scribe(src: Path, *, language: str | None = None, model: str | None = None, diarize: bool = True) -> dict:
@@ -150,8 +220,10 @@ def transcribe_file(src: str | Path, out: str | Path, *, engine: str = "whisper"
         result = scribe(src, language=language, model=model)
     elif engine == "whisper":
         result = whisper(src, language=language, model=model)
+    elif engine == "subs":
+        result = subtitles(src, language=language)
     else:
-        raise VeditError("engine must be 'whisper' or 'scribe' (the skill asks the user per project).")
+        raise VeditError("engine must be 'whisper', 'scribe' or 'subs' (the skill asks the user per project).")
     result = {"version": 1, "source": str(src), "duration": round(info.duration, 3), **result}
     write_json(out, result)
     return result

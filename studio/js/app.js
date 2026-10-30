@@ -258,9 +258,22 @@ function pinAt(kind, source, srcT) {
     player.seek(tl);
     toast("Pick a graphic: it pins to the selected word.");
   } else {
-    const sfx = Object.entries(S.view.sources || {}).find(([, s]) => s.kind === "audio");
-    if (!sfx) return toast("No sound files in this project yet. Ask Claude for effects.", "warn");
-    commit({ op: "add", list: "audio", item: { id: `${sfx[0]}_pin`, source: sfx[0], start: tl, role: "sfx", volume: 0.6, anchor: at } });
+    // the project's kit sounds by role (placed by `vedit sound place`), each with its measured sync point
+    const roles = new Map();
+    for (const a of S.view.audio || []) if (a.sfx && !roles.has(a.sfx.role)) roles.set(a.sfx.role, a);
+    if (!roles.size) {
+      commit({ op: "request", what: "sound", text: `Add a sound effect on the word at ${tc(tl)} (source ${source} @ ${srcT.toFixed(2)}s).`,
+               target: { source, t: srcT } });
+      return toast("Asked Claude for a sound here (no sound kit in this project yet).");
+    }
+    transcript.choose("Sound for this word:", [...roles.keys()].map((r) => ({ label: r, value: r })), (role) => {
+      const ex = roles.get(role);
+      const lead = (ex.sfx.offset_ms || 0) / 1000 - (ex.sfx.sync_s || 0);
+      const n = (S.view.audio || []).length + 1;
+      commit({ op: "add", list: "audio", item: { id: `sfx_pin_${n}`, source: ex.source, start: Math.max(0, tl + lead),
+        role: "sfx", volume: ex.volume ?? 0.6, label: role, anchor: { ...at, offset: lead },
+        sfx: { ...ex.sfx, cue: null } } });
+    });
   }
 }
 

@@ -82,7 +82,7 @@ vedit mg render <p>                       # renders every overlay with an mg spe
 vedit mg sheet --comp edit/mg/<file>.webm --out edit/qa/mg_<id>.png   # look at it over slate
 ```
 Higgsfield: `references/higgsfield.md` (estimate → approval → generate → `vedit higgsfield import`).
-Pinterest: `references/pinterest.md`.
+Assets and ideas: `references/sourcing.md`; web AI tools: `references/webai.md`.
 
 ## 8. Render and QA
 

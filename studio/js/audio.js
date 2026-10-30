@@ -121,12 +121,43 @@ export class AudioMix {
         g.connect(d);
         out = d;
       }
+      if (ducks) {
+        // music stop-downs from placed effects (sound.dips): ease down before the hit, back on it
+        const dips = musicDips(baked.audio);
+        if (dips.length) {
+          const sd = this.ctx.createGain();
+          sd.gain.setValueAtTime(1, now);
+          for (const [s, e, gain] of dips) {
+            if (e < t0) continue;
+            const at = now + Math.max(0, s - t0);
+            sd.gain.setValueAtTime(1, at);
+            sd.gain.linearRampToValueAtTime(gain, at + 0.08);
+            sd.gain.setValueAtTime(gain, now + Math.max(0, e - t0));
+            sd.gain.linearRampToValueAtTime(1, now + Math.max(0, e - t0) + 0.01);
+          }
+          out.connect(sd);
+          out = sd;
+        }
+      }
       out.connect(this.master);
       src.connect(g);
       src.start(when, (a.loop ? srcIn + (into % Math.max(0.01, srcOut - srcIn)) : srcIn + into), a.loop ? undefined : Math.max(0.01, length - into));
       this.playing.push({ src, gain: g });
     }
   }
+}
+
+// Mirror of sound.dips(): [[start, end, gain]] from effects placed with a music stop-down.
+export function musicDips(audio) {
+  const out = [];
+  for (const a of audio || []) {
+    const d = a.sfx?.dip;
+    if (!d || a.enabled === false) continue;
+    const hit = a.start + (a.sfx.sync_s || 0) - (a.sfx.offset_ms || 0) / 1000;
+    if (hit <= 0.05) continue;
+    out.push([Math.max(0, hit - (d.length_s ?? 0.4)), hit, Math.pow(10, -(d.depth_db ?? 9) / 20)]);
+  }
+  return out.sort((x, y) => x[0] - y[0]);
 }
 
 // Merge kept words into speech intervals on the timeline (gaps under 0.3 s join).

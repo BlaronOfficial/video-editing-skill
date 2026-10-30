@@ -18,8 +18,16 @@ asked for.
 - Word-timed animated captions in **English, Bangla and Banglish** (9 styles + your own).
 - Motion graphics Claude designs itself: 18 templates plus custom HTML/GSAP/SVG/Canvas/Three.js
   compositions, Remotion and HyperFrames, rendered with real transparency; custom Python and FFmpeg FX.
-- B-roll, music with automatic ducking, sound effects, colour grades, reframes, long-video → shorts,
-  thumbnails, post copy, voiceover, batch mode.
+- Sound design like an editor: sound kits (earshot's 252 code-made effects, or a built-in synth kit)
+  placed on the moments that need them, in sync and levelled against the music or voice; the music dips
+  before big hits; QA listens to check every effect lands.
+- Watches footage the way you would: scene frames with duplicates dropped, speaker labels, multicam cut
+  by who is talking, a searchable memory of everything you ever filmed, videos from links.
+- Assets from everywhere, with licences logged: Openverse, Wikimedia Commons, Pexels, Pixabay, the
+  browser (Google, Pinterest...), and your own logged-in Gemini, ChatGPT, Canva or Firefly.
+- A writing pass for titles, on-screen text and post copy, so nothing sounds machine-written.
+- B-roll, music with automatic ducking, colour grades, reframes, long-video → shorts, thumbnails, post
+  copy, voiceover, batch mode.
 - Learns your taste from Studio decisions, chat feedback, the routes you keep and your edits.
 - **Optional hand-offs**: an editable CapCut project today; DaVinci Resolve, Premiere/Final Cut XML and
   LosslessCut are coming in the next phases.
@@ -37,6 +45,8 @@ git clone https://github.com/BlaronOfficial/video-editing-skill "$env:USERPROFIL
 cd "$env:USERPROFILE\.claude\skills\video-editing-skill"
 .\vedit.cmd setup          # Python deps, fonts, motion-graphics renderer
 .\vedit.cmd doctor         # core READY or not, plus every optional add-on with its fix
+.\vedit.cmd setup earshot  # optional: sound kits (~70 MB)
+.\vedit.cmd setup crv      # optional: watching, speakers, link downloads (~100 MB)
 ```
 Using CapCut too? Open it once, click **Create project**, close it, and run `.\vedit.cmd capcut calibrate`.
 
@@ -61,4 +71,5 @@ API keys) lives in `personal/`, which is git-ignored, so updates never overwrite
   CapCut is a trademark of Bytedance and DaVinci Resolve of Blackmagic Design; this project is not
   affiliated with either.
 
-See `SKILL.md` for how Claude uses the skill and `references/` for the details.
+See `SKILL.md` for how Claude uses the skill, `references/` for the details and `ATTRIBUTIONS.md` for the
+open-source projects it builds on.

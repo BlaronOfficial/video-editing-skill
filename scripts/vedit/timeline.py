@@ -203,6 +203,21 @@ class TextItem(_Model):
     label: str = ""
 
 
+class SfxRef(_Model):
+    """How a sound effect was placed (vedit sound place): which kit take, and its sync point on the cue."""
+    role: str                                # earshot kit role: pop, whoosh.short, hit, tick, ...
+    kit: str = ""
+    take: str = ""                           # file name inside the kit
+    align: Literal["onset", "peak", "end"] = "onset"
+    sync_s: float = 0.0                      # the sync point, seconds from the start of the file
+    offset_ms: float = 0.0                   # sync point vs the cue (negative = the sound leads the picture)
+    cue: Optional[str] = None                # id in edit/sound/cues.json
+    dip: Optional[dict[str, float]] = None   # music stop-down before the cue: {"depth_db": 9, "length_s": 0.4}
+
+    def cue_time(self, start: float) -> float:
+        return start + self.sync_s - self.offset_ms / 1000.0
+
+
 class AudioClip(_Model):
     id: str
     source: str
@@ -218,6 +233,7 @@ class AudioClip(_Model):
     anchor: Optional[Anchor] = None
     enabled: bool = True
     fx: Optional[str] = None                 # id of the CustomFX that produced the source
+    sfx: Optional[SfxRef] = None             # set on effects placed from a sound kit
     label: str = ""
 
     @property

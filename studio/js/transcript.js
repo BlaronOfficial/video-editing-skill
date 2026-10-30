@@ -161,6 +161,15 @@ export class Transcript {
     input.select();
   }
 
+  // A row of choices in place of the toolbar (sound roles, ...).
+  choose(label, options, done) {
+    const cancel = h("button", { class: "btn small", type: "button", onclick: () => this.renderBar() }, "Cancel");
+    const btns = options.map((o) => h("button", { class: "btn small", type: "button", title: o.title || "",
+      onclick: () => { done(o.value); this.renderBar(); } }, o.label));
+    this.bar.replaceChildren(h("div", { class: "tx-form", role: "group", "aria-label": label },
+      h("span", { class: "tx-sel" }, label), ...btns, cancel));
+  }
+
   fix() {
     const ws = this.selWords();
     if (ws.length !== 1) {

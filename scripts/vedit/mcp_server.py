@@ -198,15 +198,17 @@ def studio_file(project: str, name: str) -> str:
 
 @server.tool()
 def sfx_preview(sound_id: str, duration: float | None = None, pitch: str | None = None) -> str:
-    """Render a sound-effect preview for the Studio (earshot bank arrives in phase 2; until then the vedit synth)."""
+    """Render a sound-effect preview for the Studio as base64 WAV: an earshot bank id (`vedit sound find`) or a
+    built-in synth kind ('synth/whoosh')."""
+    import base64
     import tempfile
     from pathlib import Path
+    from . import sound
     out = Path(tempfile.gettempdir()) / f"vedit_sfx_{sound_id.replace('/', '_')}.wav"
-    argv = ["sfx", sound_id.split("/")[0], "--out", str(out)] + (["--duration", str(duration)] if duration else [])
-    res = _run(argv)
-    if res.startswith("ERROR"):
-        return res
-    import base64
+    try:
+        sound.render_sound(sound_id if "/" in sound_id else f"synth/{sound_id}", out, pitch=pitch, dur=duration)
+    except Exception as exc:
+        return f"ERROR: {exc}"
     return base64.b64encode(out.read_bytes()).decode("ascii")
 
 

@@ -156,7 +156,12 @@ def _remotion() -> tuple[bool, str]:
 
 def _earshot_kits() -> tuple[bool, str]:
     py = tool_python("earshot")
-    return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup earshot` (~60 MB, no models)")
+    return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup earshot` (~70 MB download, no models)")
+
+
+def _crv() -> tuple[bool, str]:
+    py = tool_python("crv")
+    return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup crv` (~100 MB; native fallback without it)")
 
 
 def _earshot_ears() -> tuple[bool, str]:
@@ -180,9 +185,11 @@ ADDONS: list[Addon] = [
     Addon("blender", "Blender", "app", "free", "real 3D titles, logos, product shots, fly-throughs (headless)",
           "GPL (separate app)", 350, "winget install BlenderFoundation.Blender", _found(find_blender, "not installed")),
     Addon("earshot_kits", "earshot sound kits", "tool", "free", "252 code-made SFX with measured sync points",
-          "MIT", 60, "`vedit setup earshot`", _earshot_kits),
+          "MIT", 70, "`vedit setup earshot`", _earshot_kits),
     Addon("earshot_ears", "earshot ears", "model", "free", "listening QA, pick sounds by description",
           "MIT code; CLAP Apache-2.0, AST BSD-3", 1300, "`vedit setup earshot --ears`", _earshot_ears),
+    Addon("crv", "claude-real-video", "tool", "free", "watch footage (scene frames, dedup, grids), speakers, link fetch",
+          "MIT (yt-dlp Unlicense, sherpa-onnx Apache-2.0)", 100, "`vedit setup crv`", _crv),
     Addon("remotion", "Remotion", "engine", "freemium", "React motion graphics",
           "Remotion licence (free for individuals / teams up to 3)", 150, "auto on first use", _remotion),
     Addon("elevenlabs", "ElevenLabs", "service", "paid", "Scribe transcription, premium TTS, voice clone",

@@ -19,6 +19,7 @@ Blender, earshot, paid services), model packs, disk and measured bandwidth.
   account menu vs. "Sign in"), close the tab. Services worth checking: gemini.google.com, chatgpt.com,
   canva.com (or use the Canva connector), firefly.adobe.com, ideogram.ai, leonardo.ai, krea.ai,
   freepik.com, suno.com, runwayml.com, klingai.com, lumalabs.ai. Never sign in or type credentials.
+  The probe, per service, is in `references/webai.md`.
 
 Record it so routes can use it and later sessions start informed:
 ```
@@ -43,21 +44,19 @@ Costs: free and local routes need no ask. Subscription web AIs are fine within t
 Higgsfield, paid APIs) always get an estimate and a yes first. Afterwards:
 `vedit route log <need> <route> kept|rejected|failed --project <name>`.
 
-## 3. Web AI generation (optional, the owner's logged-in accounts)
+## 3. Sourcing and web AI generation
 
-- **Prompt like an art director**: subject, composition with room for text, lens and light, the brand's
-  colours as hex, the chosen direction's mood, aspect ratio, and for elements or icons a flat
-  single-colour background (easy to key) and no text inside the image.
-- **Batch small**: 2-4 variants, pick, refine one.
-- **Download** with the site's own download button (files land in the owner's Downloads folder), then
-  register with provenance: `vedit provenance add <p> --file <path> --source webai:gemini --url <page>
-  --license "<service + tier terms>" --notes "<prompt>"`.
-- **Post-process**: background removal (Canva connector `remove-background`, or native matting),
-  vectorise icons, upscale, colour-match to the grade.
-- **Licences**: commercial use depends on the service and plan tier (free Suno/Udio tiers are
-  non-commercial). Note it in provenance and flag it before publishing.
-- **Stop** at login walls, CAPTCHAs, payment prompts or anything that looks like the owner's private data,
-  and tell the owner.
+Everything external comes in with provenance (source, licence, author, prompt):
+- **Free libraries**: `vedit sources search <words> [--kind video|audio]` (Openverse, Wikimedia Commons,
+  Pexels and Pixabay with the owner's free keys), then `vedit sources get <p> --pick N --register`.
+- **The browser**: Google Images, Pinterest, Behance, YouTube, LottieFiles, Iconify, Google Fonts for
+  ideas and mood boards; download only what the licence allows (`references/sourcing.md`).
+- **The owner's logged-in web AIs** (Gemini, ChatGPT, Firefly, Ideogram, Canva, Suno, Veo/Runway/Kling):
+  `vedit inbox mark`, generate in a new tab with an art-directed prompt, download, then
+  `vedit inbox pull <p> --service gemini --prompt "..." --register`. Prompting, budgets, licences and when
+  to stop: `references/webai.md`.
+- **Post-process**: background removal (Canva connector `remove-background`, chroma, or native matting
+  in phase 4), `vedit inbox vectorize <png>` for icons, resize and colour-match to the grade.
 - **Second opinion on the render**: Gemini watches video natively. Ask per project before uploading the
   owner's video there; treat its notes as hints and verify them on the frames.
 
@@ -73,8 +72,9 @@ install it through `vedit tools vet` / `vedit tools add`, with the owner's yes.
 
 Asked for a look you can't name the recipe for ("Apple keynote text reveal", "MrBeast glitch title")?
 1. `vedit technique list` first; maybe it is already known.
-2. Search the web and YouTube tutorials; watch one (frames + transcript) or study a reference with
-   `vedit style analyze`.
+2. Search the web and YouTube tutorials; watch one: `vedit fetch <url> --to <folder>` (reference only),
+   `vedit watch <file> --file` for the frame grids, `vedit transcribe` or its captions; or study a reference
+   with `vedit style analyze`.
 3. Rebuild it natively, check it on frames, then save the recipe: `vedit technique save <name> --file
    recipe.md` (what it is, when to use it, the exact parameters, which engine).
 
@@ -96,8 +96,9 @@ around it (or around your recommendation in auto mode).
 
 ## 7. The critique loop: judge before the owner sees it
 
-Look at evidence, not at the JSON: `vedit frames`, a preview render (`vedit render --preview`) with
-`vedit qa`, the storyboard. Score the draft against this bar, fix, and look again (three rounds at most;
+Look and listen to evidence, not the JSON: `vedit watch <p> --render` (scene grids of the draft), a
+preview render (`vedit render --preview`) with `vedit qa` (cut sheets, SFX sync, and earshot's ears when
+installed), the storyboard. Score the draft against this bar, fix, and look again (three rounds at most;
 two automatic rounds in auto mode):
 
 - **Hook**: the strongest line or image lands in the first 1.5 s; no dead air or throat-clearing before it.
@@ -109,8 +110,11 @@ two automatic rounds in auto mode):
   platform UI (check the safe zone), Bangla shaped and never uppercased.
 - **Graphics**: pinned to their words, clear of faces and safe zones, one visual system (brand colours
   and type), motion that eases in and out.
-- **Sound**: SFX on motion and reveals (not on every cut), music ducks under speech and swells in gaps,
-  -14 LUFS integrated, true peak at or under -1 dBTP, no pops at cuts.
+- **Sound**: SFX on motion and reveals (not on every cut), each one audible and on its cue (QA
+  `sfx_sync`), music ducks under speech and steps down before big hits, -14 LUFS integrated, true peak at
+  or under -1 dBTP, no pops at cuts.
+- **Words on screen**: titles, lower thirds and post copy pass `vedit text check <p>` (no machine-sounding
+  phrasing; short enough to read in a glance).
 - **Look**: one consistent grade, natural skin.
 - **Ending**: the payoff, then a CTA, then out. No trailing silence or black.
 - **Platform**: ratio, length, captions burned or sidecar as the platform needs.

@@ -41,6 +41,13 @@ MODELS: dict[str, Model] = {m.id: m for m in [
     Model("yunet", "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
           0.23, "MIT (opencv_zoo)", "face detection for reframe, thumbnails, tracking",
           "face_detection_yunet_2023mar.onnx"),
+    Model("speaker_seg", "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/"
+          "sherpa-onnx-pyannote-segmentation-3-0.tar.bz2", 7.0, "MIT (pyannote segmentation 3.0, sherpa-onnx export)",
+          "who speaks when: speech turns", "speakers/pyannote-seg-3-0.tar.bz2", archive="tar.bz2",
+          extracted="speakers/sherpa-onnx-pyannote-segmentation-3-0/model.onnx"),
+    Model("speaker_emb", "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/"
+          "3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx", 39.6, "Apache-2.0 (3D-Speaker)",
+          "who speaks when: voice fingerprints", "speakers/3dspeaker_eres2net_base_16k.onnx"),
 ]}
 
 
@@ -160,7 +167,7 @@ def download(model_id: str, *, progress: bool = True) -> Path:
             raise VeditError(f"Checksum mismatch for {m.id}; the partial file was removed. Retry the download.")
     part.replace(final)
     if m.archive:
-        _extract(final, m.archive, models_dir())
+        _extract(final, m.archive, final.parent)
         final.unlink(missing_ok=True)
     return path_of(model_id)
 

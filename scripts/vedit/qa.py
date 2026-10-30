@@ -22,7 +22,8 @@ def _detect(src: Path, video_filter: str, pattern: str) -> list[tuple[float, flo
     return [(float(a), float(b)) for a, b in re.findall(pattern, proc.stderr or "")]
 
 
-def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lufs: float = -14.0) -> dict:
+def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lufs: float = -14.0,
+          listen: bool = True) -> dict:
     from .knobs import bake
     edit = bake(edit.layout()).active()
     render_path, out_dir = Path(render_path), Path(out_dir)
@@ -117,7 +118,34 @@ def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lu
     if ov_times:
         sheets.append(str(frames_at(render_path, ov_times, out_dir / "graphics.png", width=300,
                                     labels=[o.id for o in edit.overlays][:12])))
+    # Sound effects: does each one sound where it was placed? (earshot's detector, or a simple onset search)
+    sfx = None
+    if any(a.sfx for a in edit.audio):
+        from . import sound
+        try:
+            sfx = sound.check(edit, render_path, out_dir)
+            for it in sfx.get("items", []):
+                if it.get("status") in ("no sound", "off"):
+                    issue("sfx_sync", f"{it.get('id')} ({it.get('kind')}): no audible sound at its cue "
+                          "(buried under voice/music, or placed wrong)", it.get("t"))
+                elif it.get("offset_ms") is not None and abs(it["offset_ms"]) > 60:
+                    issue("sfx_sync", f"{it.get('id')}: sounds {it['offset_ms']:+.0f} ms from its cue", it.get("t"), "info")
+        except Exception as exc:          # listening is a check, never a blocker
+            sfx = {"error": str(exc)}
+    ears = None
+    if listen:
+        from . import sound
+        if sound.ears_installed():
+            cue_items = [{"t": round(a.sfx.cue_time(a.start), 3), "kind": a.sfx.role, "id": a.id}
+                         for a in edit.audio if a.sfx]
+            try:
+                ears = sound.ears(render_path, out_dir, cue_items)
+                if ears.get("sheet"):
+                    sheets.append(ears["sheet"])
+            except Exception as exc:
+                ears = {"error": str(exc)}
     report = {"render": str(render_path), "duration": round(info.duration, 2), "loudness": loud, "issues": issues,
+              "sfx": sfx, "ears": ears,
               "errors": sum(1 for i in issues if i["severity"] == "error"), "sheets": sheets, "pops": pops,
               "silences": silences, "black": blacks}
     write_json(out_dir / "report.json", report)

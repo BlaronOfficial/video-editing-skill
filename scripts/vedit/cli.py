@@ -47,6 +47,12 @@ def cmd_setup(a):
         out["whisper"] = setup.prefetch_whisper(a.model or config.load()["transcription"]["whisper_model"])
     if what == "install-fonts":
         out["installed"] = setup.install_fonts_for_user()
+    if what == "earshot":
+        from . import sound
+        out["earshot"] = sound.setup(ears=a.ears)
+    if what == "crv":
+        from . import watch
+        out["crv"] = watch.setup()
     print_json(out)
 
 
@@ -581,8 +587,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sp.add_parser("doctor", help="check the environment"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_doctor)
     s = sp.add_parser("setup", help="install fonts, renderer deps, whisper model")
-    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts"])
+    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts", "earshot", "crv"])
     s.add_argument("--force", action="store_true"); s.add_argument("--whisper", action="store_true"); s.add_argument("--model")
+    s.add_argument("--ears", action="store_true", help="earshot: also torch CPU + listening models (~1.3 GB)")
     s.set_defaults(fn=cmd_setup)
     s = sp.add_parser("update", help="git pull the latest skill (keeps personal/)"); s.add_argument("--check", action="store_true")
     s.set_defaults(fn=cmd_update)
@@ -596,7 +603,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--recursive", action="store_true"); s.add_argument("--force", action="store_true")
     s.add_argument("--file"); s.add_argument("--origin", default="library"); s.set_defaults(fn=cmd_project)
     s = sp.add_parser("probe"); s.add_argument("files", nargs="+"); s.set_defaults(fn=cmd_probe)
-    s = sp.add_parser("transcribe"); s.add_argument("path"); s.add_argument("--engine", choices=["whisper", "scribe"], required=True)
+    s = sp.add_parser("transcribe"); s.add_argument("path"); s.add_argument("--engine", choices=["whisper", "scribe", "subs"], required=True)
     s.add_argument("--language"); s.add_argument("--model"); s.add_argument("--source", nargs="*"); s.add_argument("--force", action="store_true")
     s.set_defaults(fn=cmd_transcribe)
     s = sp.add_parser("pack"); s.add_argument("path"); s.set_defaults(fn=cmd_pack)
@@ -685,9 +692,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("mcp", help="run the MCP server (stdio)"); s.set_defaults(fn=cmd_mcp)
 
     # v2 command groups live next to their modules
-    from . import (capabilities, custom, extend, extensions, knobs, learn, models, modes, routes, studio,
-                   studio_local, suggest)
-    for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend):
+    from . import (capabilities, custom, extend, extensions, knobs, learn, models, modes, routes, sound, studio,
+                   studio_local, suggest, watch, writing, inbox, sources)
+    for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend, sound,
+                watch, writing, inbox, sources):
         mod.register_cli(sp)
     extensions.register_cli(sp)
     return ap

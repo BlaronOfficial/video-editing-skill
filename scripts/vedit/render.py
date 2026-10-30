@@ -471,10 +471,15 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     if music_labels:
         a_parts.append("[speech]asplit=2[sp_mix][sp_key]")
         bed = "".join(f"[{l}]" for l in music_labels)
+        from .sound import dip_expr, dips
+        expr = dip_expr(dips(edit))
+        pre = "[bed_pre]" if expr else "[bed]"
         if len(music_labels) > 1:
-            a_parts.append(f"{bed}amix=inputs={len(music_labels)}:normalize=0[bed]")
+            a_parts.append(f"{bed}amix=inputs={len(music_labels)}:normalize=0{pre}")
         else:
-            a_parts.append(f"{bed}anull[bed]")
+            a_parts.append(f"{bed}anull{pre}")
+        if expr:       # music stop-downs: the bed eases down before a big hit and comes back on it
+            a_parts.append(f"[bed_pre]volume=eval=frame:volume='{expr}'[bed]")
         ratio = max(2.0, min(20.0, abs(au.duck_db) / 1.5))
         a_parts.append(f"[bed][sp_key]sidechaincompress=threshold=0.025:ratio={ratio:.1f}:attack=25:release=450:makeup=1[ducked]")
         mix_inputs += ["[sp_mix]", "[ducked]"]

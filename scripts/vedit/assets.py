@@ -120,13 +120,13 @@ def add_provenance(project_root: Path, file: str | Path, *, source: str, url: st
     return rec
 
 
-def download(url: str, dest_dir: Path, *, name: str | None = None) -> Path:
+def download(url: str, dest_dir: Path, *, name: str | None = None, user_agent: str | None = None) -> Path:
     import httpx
     dest_dir.mkdir(parents=True, exist_ok=True)
     fname = name or re.sub(r"[^\w.\-]+", "_", url.split("?")[0].rstrip("/").split("/")[-1]) or f"asset_{int(time.time())}"
     out = dest_dir / fname
     with httpx.stream("GET", url, follow_redirects=True, timeout=120,
-                      headers={"User-Agent": "Mozilla/5.0 (video-editing-skill)"}) as r:
+                      headers={"User-Agent": user_agent or "Mozilla/5.0 (video-editing-skill)"}) as r:
         r.raise_for_status()
         ctype = r.headers.get("content-type", "")
         if "." not in fname:

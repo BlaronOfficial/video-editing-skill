@@ -1,96 +1,828 @@
 {
-  "_doc": "Ways to make each thing an edit needs. Scores 1-5 (higher is better). `requires`: all must be met; 'a|b' = either. cost: free | subscription (owner's plan quota) | credits (metered: always ask) | paid (API key). licence: own | cc | stock | ai-service | check. privacy: local | uploads. Claude ranks with `vedit route plan <need>`, mixes routes freely, logs outcomes with `vedit route log`. Personal additions: personal/routes.json or personal/extensions/*.py ROUTES.",
-  "icon": [
-    {"id": "claude_svg", "label": "Claude draws an SVG icon/element", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "Write SVG inline in a composition or edit/custom/<name>.svg; animate with GSAP. Best for flat/line icons, arrows, shapes, badges."},
-    {"id": "iconify", "label": "Iconify / Lucide / Phosphor open icon sets", "requires": ["browser|web:"], "cost": "free", "quality": 4, "speed": 4, "licence": "cc", "privacy": "local", "how": "api.iconify.design/<set>/<name>.svg (MIT/Apache sets). Log provenance."},
-    {"id": "webai_image", "label": "Logged-in web AI (Gemini, ChatGPT, Ideogram, Firefly...) on a flat background", "requires": ["browser", "webai:gemini|webai:chatgpt|webai:ideogram|webai:firefly|webai:leonardo|webai:krea|webai:freepik"], "cost": "subscription", "quality": 4, "speed": 3, "licence": "ai-service", "privacy": "uploads", "how": "references/webai.md: style-consistent prompt, download, `vedit inbox pull`, remove background, vectorize if needed."},
-    {"id": "canva_generate", "label": "Canva generate-image (+ remove-background)", "requires": ["connector:canva"], "cost": "subscription", "quality": 4, "speed": 4, "licence": "ai-service", "privacy": "uploads", "how": "Canva MCP generate-image, then remove-background; export PNG."}
-  ],
-  "image": [
-    {"id": "claude_html", "label": "Claude-made illustration (SVG/HTML/Canvas/shader)", "requires": [], "cost": "free", "quality": 3, "speed": 4, "licence": "own", "privacy": "local", "how": "Composition in edit/custom/*.html rendered as still or animation. Abstract backgrounds, diagrams, UI mockups, gradients, data art."},
-    {"id": "own_library", "label": "Owner's indexed library", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "`vedit assets search <words> --kind image`."},
-    {"id": "openverse", "label": "Openverse / Wikimedia Commons (CC)", "requires": ["web:"], "cost": "free", "quality": 3, "speed": 4, "licence": "cc", "privacy": "local", "how": "`vedit source search openverse <query>` (phase 2); attribution logged."},
-    {"id": "stock_api", "label": "Pexels / Pixabay", "requires": ["secret:pexels|secret:pixabay"], "cost": "free", "quality": 4, "speed": 4, "licence": "stock", "privacy": "local", "how": "`vedit source search pexels <query>` (phase 2)."},
-    {"id": "browser_search", "label": "Google Images, Pinterest, Behance, Unsplash via the browser", "requires": ["browser"], "cost": "free", "quality": 4, "speed": 3, "licence": "check", "privacy": "local", "how": "references/sourcing.md: mood board first, download with provenance, flag unclear licences."},
-    {"id": "webai_image", "label": "Logged-in web AI image (Gemini/Imagen, ChatGPT, Firefly, Ideogram, Leonardo, Krea, Freepik)", "requires": ["browser", "webai:gemini|webai:chatgpt|webai:firefly|webai:ideogram|webai:leonardo|webai:krea|webai:freepik"], "cost": "subscription", "quality": 5, "speed": 3, "licence": "ai-service", "privacy": "uploads", "how": "references/webai.md."},
-    {"id": "canva_generate", "label": "Canva generate-image", "requires": ["connector:canva"], "cost": "subscription", "quality": 4, "speed": 4, "licence": "ai-service", "privacy": "uploads", "how": "Canva MCP generate-image."},
-    {"id": "gemini_api", "label": "Gemini API image generation (free tier key)", "requires": ["secret:gemini"], "cost": "free", "quality": 5, "speed": 4, "licence": "ai-service", "privacy": "uploads", "how": "Gemini image model through the owner's AI Studio key."},
-    {"id": "higgsfield_image", "label": "Higgsfield image", "requires": ["addon:higgsfield"], "cost": "credits", "quality": 5, "speed": 3, "licence": "ai-service", "privacy": "uploads", "how": "references/higgsfield.md; estimate first."}
-  ],
-  "scene_clip": [
-    {"id": "own_footage", "label": "Owner's footage / B-roll library", "requires": [], "cost": "free", "quality": 5, "speed": 5, "licence": "own", "privacy": "local", "how": "`vedit assets search`, `vedit memory search` (phase 2)."},
-    {"id": "claude_animated", "label": "Claude-made animated scene (HTML/GSAP/Three.js/Canvas)", "requires": ["core:mg_renderer"], "cost": "free", "quality": 4, "speed": 3, "licence": "own", "privacy": "local", "how": "Full-frame composition: abstract motion, kinetic typography, UI walkthroughs, 2.5D parallax of stills, 3D product cards."},
-    {"id": "stock_video", "label": "Pexels / Pixabay video", "requires": ["secret:pexels|secret:pixabay"], "cost": "free", "quality": 4, "speed": 4, "licence": "stock", "privacy": "local", "how": "phase 2 sources."},
-    {"id": "webai_video", "label": "Logged-in web AI video (Gemini Veo, Runway, Kling, Luma)", "requires": ["browser", "webai:gemini|webai:runway|webai:kling|webai:luma"], "cost": "credits", "quality": 5, "speed": 1, "licence": "ai-service", "privacy": "uploads", "how": "Always ask first (quota/credits). Silent clips; add sound in vedit."},
-    {"id": "higgsfield_video", "label": "Higgsfield video / VFX shot", "requires": ["addon:higgsfield"], "cost": "credits", "quality": 5, "speed": 2, "licence": "ai-service", "privacy": "uploads", "how": "references/higgsfield.md."}
-  ],
-  "motion_graphic": [
-    {"id": "template", "label": "Shipped or personal template", "requires": ["core:mg_renderer"], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "`vedit mg templates`; personal ones from `vedit template save`."},
-    {"id": "custom_html", "label": "Custom composition written for this moment (HTML/GSAP/SVG/Canvas)", "requires": ["core:mg_renderer"], "cost": "free", "quality": 5, "speed": 3, "licence": "own", "privacy": "local", "how": "edit/custom/<id>.html -> Overlay.mg.file. How good edits become excellent."},
-    {"id": "remotion", "label": "Remotion (React)", "requires": ["core:node"], "cost": "free", "quality": 5, "speed": 2, "licence": "own", "privacy": "local", "how": "mg/remotion; licence note for companies > 3 people."},
-    {"id": "lottie", "label": "LottieFiles animation (lottie-web)", "requires": ["browser|web:"], "cost": "free", "quality": 4, "speed": 4, "licence": "check", "privacy": "local", "how": "Download .json (Lottie Simple License / CC), play with lottie-web in a composition."},
-    {"id": "capcut_effect", "label": "CapCut text/animation preset (in the CapCut hand-off)", "requires": ["addon:capcut"], "cost": "free", "quality": 3, "speed": 4, "licence": "check", "privacy": "local", "how": "TextItem.capcut_intro etc.; only appears in the CapCut project."}
-  ],
-  "3d": [
-    {"id": "threejs", "label": "Three.js composition (3D text, logo, particles, product card, camera moves)", "requires": ["core:mg_renderer"], "cost": "free", "quality": 4, "speed": 4, "licence": "own", "privacy": "local", "how": "edit/custom/*.html with window.__seek(t); phase 4 adds 3D templates."},
-    {"id": "blender", "label": "Blender headless render", "requires": ["addon:blender"], "cost": "free", "quality": 5, "speed": 1, "licence": "own", "privacy": "local", "how": "phase 4: bpy templates; ask before installing Blender."},
-    {"id": "fusion", "label": "DaVinci Fusion (Studio)", "requires": ["addon:resolve_studio"], "cost": "paid", "quality": 5, "speed": 2, "licence": "own", "privacy": "local", "how": "references/resolve.md."},
-    {"id": "webai_video", "label": "Web AI generated 3D-looking shot", "requires": ["browser", "webai:gemini|webai:runway|webai:kling|webai:luma"], "cost": "credits", "quality": 4, "speed": 1, "licence": "ai-service", "privacy": "uploads", "how": "Ask first."},
-    {"id": "higgsfield_vfx", "label": "Higgsfield VFX", "requires": ["addon:higgsfield"], "cost": "credits", "quality": 5, "speed": 2, "licence": "ai-service", "privacy": "uploads", "how": "Ask with estimate."}
-  ],
-  "vfx": [
-    {"id": "custom_python", "label": "Custom Python FX (numpy/OpenCV per frame -> alpha overlay)", "requires": [], "cost": "free", "quality": 4, "speed": 2, "licence": "own", "privacy": "local", "how": "CustomFX kind=python; `vedit fx save` to reuse."},
-    {"id": "ffmpeg_hook", "label": "FFmpeg filter chain at a render hook", "requires": ["core:ffmpeg"], "cost": "free", "quality": 3, "speed": 5, "licence": "own", "privacy": "local", "how": "CustomFX kind=ffmpeg (glitch, grain, vignette, chromatic shift, blur, curves)."},
-    {"id": "native_vfx", "label": "Native tracking / cutout / depth / stabilize", "requires": [], "cost": "free", "quality": 4, "speed": 2, "licence": "own", "privacy": "local", "how": "phase 4 (vedit vfx ...)."},
-    {"id": "capcut_vfx", "label": "CapCut effect / tracking in the CapCut hand-off", "requires": ["addon:capcut"], "cost": "free", "quality": 3, "speed": 3, "licence": "check", "privacy": "local", "how": "EffectItem.capcut; tracking done by the owner in CapCut."}
-  ],
-  "music": [
-    {"id": "own_library", "label": "Owner's music library", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "`vedit assets search --kind music`; earshot ears can rank by description (phase 2)."},
-    {"id": "openverse_audio", "label": "Openverse / Free Music Archive / ccMixter (CC)", "requires": ["web:"], "cost": "free", "quality": 3, "speed": 3, "licence": "cc", "privacy": "local", "how": "Check CC-BY vs NC for commercial work; attribution in credits."},
-    {"id": "browser_libraries", "label": "YouTube Audio Library, Pixabay Music, Uppbeat (free tiers) via the browser", "requires": ["browser"], "cost": "free", "quality": 4, "speed": 3, "licence": "check", "privacy": "local", "how": "references/sourcing.md."},
-    {"id": "webai_music", "label": "Suno / Udio (logged in)", "requires": ["browser", "webai:suno|webai:udio"], "cost": "subscription", "quality": 4, "speed": 2, "licence": "ai-service", "privacy": "uploads", "how": "Free tiers are non-commercial: flag before publishing."},
-    {"id": "procedural_bed", "label": "Procedural ambience / pulse bed (code)", "requires": [], "cost": "free", "quality": 2, "speed": 4, "licence": "own", "privacy": "local", "how": "CustomFX kind=python output=audio (numpy synthesis)."}
-  ],
-  "sfx": [
-    {"id": "earshot_kit", "label": "earshot bank + kit (252 code-made sounds, measured sync)", "requires": ["addon:earshot_kits"], "cost": "free", "quality": 5, "speed": 4, "licence": "own", "privacy": "local", "how": "phase 2: AudioClip.sfx_id with align onset/peak/end."},
-    {"id": "vedit_synth", "label": "vedit procedural synth (fallback)", "requires": [], "cost": "free", "quality": 3, "speed": 5, "licence": "own", "privacy": "local", "how": "`vedit sfx <kind>`."},
-    {"id": "own_library", "label": "Owner's SFX library", "requires": [], "cost": "free", "quality": 4, "speed": 4, "licence": "own", "privacy": "local", "how": "`vedit assets search --kind sfx`."},
-    {"id": "freesound", "label": "Freesound (CC, needs login to download)", "requires": ["browser"], "cost": "free", "quality": 4, "speed": 2, "licence": "cc", "privacy": "local", "how": "Check CC0 / CC-BY; never log in for the owner."}
-  ],
-  "voiceover": [
-    {"id": "owner_voice", "label": "The owner records it", "requires": [], "cost": "free", "quality": 5, "speed": 1, "licence": "own", "privacy": "local", "how": "Script with the writing pass, then transcribe."},
-    {"id": "offline_tts", "label": "Offline neural TTS (Kokoro/Piper EN; Bangla model if licence allows)", "requires": [], "cost": "free", "quality": 3, "speed": 4, "licence": "check", "privacy": "local", "how": "phase 5."},
-    {"id": "edge_tts", "label": "Edge TTS (free online, bn-BD/bn-IN voices)", "requires": ["web:"], "cost": "free", "quality": 4, "speed": 4, "licence": "check", "privacy": "uploads", "how": "phase 5; unofficial endpoint."},
-    {"id": "elevenlabs", "label": "ElevenLabs TTS / clone", "requires": ["addon:elevenlabs"], "cost": "paid", "quality": 5, "speed": 4, "licence": "ai-service", "privacy": "uploads", "how": "`vedit tts speak`."}
-  ],
-  "font": [
-    {"id": "shipped_fonts", "label": "Shipped OFL fonts (Latin + Bangla)", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "cc", "privacy": "local", "how": ".cache/fonts (`vedit setup fonts`)."},
-    {"id": "google_fonts", "label": "Google Fonts via the browser", "requires": ["browser|web:"], "cost": "free", "quality": 4, "speed": 4, "licence": "cc", "privacy": "local", "how": "Download the TTF into the project, log OFL licence."},
-    {"id": "brand_font", "label": "Brand kit font", "requires": [], "cost": "free", "quality": 5, "speed": 5, "licence": "check", "privacy": "local", "how": "personal/brands/<brand>.json"}
-  ],
-  "thumbnail": [
-    {"id": "native_thumbnail", "label": "Best frame + Claude-designed composition", "requires": ["core:mg_renderer"], "cost": "free", "quality": 4, "speed": 4, "licence": "own", "privacy": "local", "how": "`vedit thumbnail frames|make`; custom HTML for bespoke layouts."},
-    {"id": "canva_design", "label": "Canva design with the owner's brand kit", "requires": ["connector:canva"], "cost": "subscription", "quality": 5, "speed": 3, "licence": "ai-service", "privacy": "uploads", "how": "Canva MCP generate-design / brand templates, export PNG."},
-    {"id": "webai_image", "label": "Web AI key art + native text overlay", "requires": ["browser", "webai:gemini|webai:chatgpt|webai:firefly|webai:ideogram"], "cost": "subscription", "quality": 5, "speed": 3, "licence": "ai-service", "privacy": "uploads", "how": "Generate background/subject art; set the text natively for crisp type."}
-  ],
-  "color_look": [
-    {"id": "grade_preset", "label": "Renderer grade preset", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "edit.color.preset (12 presets)."},
-    {"id": "lut", "label": ".cube LUT (owner's or Claude-generated)", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "check", "privacy": "local", "how": "edit.color.lut; phase 3 exports presets as LUTs."},
-    {"id": "match_reference", "label": "Match a reference still/look", "requires": [], "cost": "free", "quality": 4, "speed": 3, "licence": "own", "privacy": "local", "how": "Custom python FX or curves/eq derived from `vedit style analyze` stats."}
-  ],
-  "background_removal": [
-    {"id": "native_matte", "label": "Native matting (offline model)", "requires": [], "cost": "free", "quality": 4, "speed": 2, "licence": "own", "privacy": "local", "how": "phase 4 (vedit vfx matte)."},
-    {"id": "canva_remove_bg", "label": "Canva remove-background (stills)", "requires": ["connector:canva"], "cost": "subscription", "quality": 5, "speed": 4, "licence": "ai-service", "privacy": "uploads", "how": "Canva MCP remove-background."},
-    {"id": "chroma", "label": "Chroma key (green screen footage)", "requires": [], "cost": "free", "quality": 4, "speed": 5, "licence": "own", "privacy": "local", "how": "Overlay.chroma / CustomFX ffmpeg colorkey."}
-  ],
-  "research": [
-    {"id": "browser_moodboard", "label": "Mood board from Pinterest, Behance, Dribbble, Google, YouTube", "requires": ["browser"], "cost": "free", "quality": 5, "speed": 3, "licence": "check", "privacy": "local", "how": "references/sourcing.md."},
-    {"id": "watch_reference", "label": "Watch a reference video (keyframes + transcript)", "requires": [], "cost": "free", "quality": 5, "speed": 3, "licence": "check", "privacy": "local", "how": "`vedit style analyze` now; `vedit fetch` + `vedit watch` (phase 2)."},
-    {"id": "web_search", "label": "Web search for techniques and tutorials", "requires": ["web:"], "cost": "free", "quality": 4, "speed": 4, "licence": "own", "privacy": "local", "how": "Then rebuild natively and `vedit technique save`."}
-  ],
-  "critique": [
-    {"id": "self_critique", "label": "Claude's critique loop (frames, QA, ears)", "requires": [], "cost": "free", "quality": 4, "speed": 4, "licence": "own", "privacy": "local", "how": "references/director.md excellence checklist."},
-    {"id": "gemini_watch", "label": "Second opinion: Gemini watches the render (logged in)", "requires": ["browser", "webai:gemini"], "cost": "subscription", "quality": 4, "speed": 2, "licence": "own", "privacy": "uploads", "how": "Ask per project: the video leaves the PC."},
-    {"id": "deep_review", "label": "Parallel critic lenses (subagents)", "requires": [], "cost": "free", "quality": 5, "speed": 3, "licence": "own", "privacy": "local", "how": "Only when the owner asks for agents."}
-  ]
+ "_doc": "Ways to make each thing an edit needs. Scores 1-5 (higher is better). `requires`: all must be met; 'a|b' = either. cost: free | subscription (owner's plan quota) | credits (metered: always ask) | paid (API key). licence: own | cc | stock | ai-service | check. privacy: local | uploads. Claude ranks with `vedit route plan <need>`, mixes routes freely, logs outcomes with `vedit route log`. Personal additions: personal/routes.json or personal/extensions/*.py ROUTES.",
+ "icon": [
+  {
+   "id": "claude_svg",
+   "label": "Claude draws an SVG icon/element",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Write SVG inline in a composition or edit/custom/<name>.svg; animate with GSAP. Best for flat/line icons, arrows, shapes, badges."
+  },
+  {
+   "id": "iconify",
+   "label": "Iconify / Lucide / Phosphor open icon sets",
+   "requires": [
+    "browser|web:"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "cc",
+   "privacy": "local",
+   "how": "api.iconify.design/<set>/<name>.svg (MIT/Apache sets). Log provenance."
+  },
+  {
+   "id": "webai_image",
+   "label": "Logged-in web AI (Gemini, ChatGPT, Ideogram, Firefly...) on a flat background",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:chatgpt|webai:ideogram|webai:firefly|webai:leonardo|webai:krea|webai:freepik"
+   ],
+   "cost": "subscription",
+   "quality": 4,
+   "speed": 3,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "references/webai.md: style-consistent prompt, `vedit inbox mark`, generate + download, `vedit inbox pull <p> --service <s> --prompt ...`, remove background (Canva or chroma), `vedit inbox vectorize` for SVG."
+  },
+  {
+   "id": "canva_generate",
+   "label": "Canva generate-image (+ remove-background)",
+   "requires": [
+    "connector:canva"
+   ],
+   "cost": "subscription",
+   "quality": 4,
+   "speed": 4,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Canva MCP generate-image, then remove-background; export PNG."
+  }
+ ],
+ "image": [
+  {
+   "id": "claude_html",
+   "label": "Claude-made illustration (SVG/HTML/Canvas/shader)",
+   "requires": [],
+   "cost": "free",
+   "quality": 3,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Composition in edit/custom/*.html rendered as still or animation. Abstract backgrounds, diagrams, UI mockups, gradients, data art."
+  },
+  {
+   "id": "own_library",
+   "label": "Owner's indexed library",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit assets search <words> --kind image`."
+  },
+  {
+   "id": "openverse",
+   "label": "Openverse / Wikimedia Commons (CC, public domain)",
+   "requires": [
+    "web:"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 4,
+   "licence": "cc",
+   "privacy": "local",
+   "how": "`vedit sources search <words>` then `vedit sources get <p> --pick N`; licence flags + attribution logged; `vedit sources credits <p>` for the description."
+  },
+  {
+   "id": "stock_api",
+   "label": "Pexels / Pixabay",
+   "requires": [
+    "secret:pexels|secret:pixabay"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "stock",
+   "privacy": "local",
+   "how": "`vedit sources search <words> --provider pexels pixabay [--orientation portrait]`, `vedit sources get`."
+  },
+  {
+   "id": "browser_search",
+   "label": "Google Images, Pinterest, Behance, Unsplash via the browser",
+   "requires": [
+    "browser"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "references/sourcing.md: mood board first, download with provenance, flag unclear licences."
+  },
+  {
+   "id": "webai_image",
+   "label": "Logged-in web AI image (Gemini/Imagen, ChatGPT, Firefly, Ideogram, Leonardo, Krea, Freepik)",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:chatgpt|webai:firefly|webai:ideogram|webai:leonardo|webai:krea|webai:freepik"
+   ],
+   "cost": "subscription",
+   "quality": 5,
+   "speed": 3,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "references/webai.md: `vedit inbox mark`, generate in the owner's logged-in tab, download, `vedit inbox pull <p> --service <s> --prompt ... --register`."
+  },
+  {
+   "id": "canva_generate",
+   "label": "Canva generate-image",
+   "requires": [
+    "connector:canva"
+   ],
+   "cost": "subscription",
+   "quality": 4,
+   "speed": 4,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Canva MCP generate-image."
+  },
+  {
+   "id": "gemini_api",
+   "label": "Gemini API image generation (free tier key)",
+   "requires": [
+    "secret:gemini"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 4,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Gemini image model through the owner's AI Studio key."
+  },
+  {
+   "id": "higgsfield_image",
+   "label": "Higgsfield image",
+   "requires": [
+    "addon:higgsfield"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 3,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "references/higgsfield.md; estimate first."
+  }
+ ],
+ "scene_clip": [
+  {
+   "id": "own_footage",
+   "label": "Owner's footage / B-roll library",
+   "requires": [],
+   "cost": "free",
+   "quality": 5,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit memory ask \"<what is said>\"` finds the moment in any footage ever transcribed; `vedit assets search` for tagged clips; `vedit watch` to see it."
+  },
+  {
+   "id": "claude_animated",
+   "label": "Claude-made animated scene (HTML/GSAP/Three.js/Canvas)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Full-frame composition: abstract motion, kinetic typography, UI walkthroughs, 2.5D parallax of stills, 3D product cards."
+  },
+  {
+   "id": "stock_video",
+   "label": "Pexels / Pixabay video",
+   "requires": [
+    "secret:pexels|secret:pixabay"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "stock",
+   "privacy": "local",
+   "how": "`vedit sources search <words> --kind video --provider pexels pixabay` (Wikimedia has some CC video too)."
+  },
+  {
+   "id": "webai_video",
+   "label": "Logged-in web AI video (Gemini Veo, Runway, Kling, Luma)",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:runway|webai:kling|webai:luma"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 1,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Always ask first (quota/credits). Silent clips; add sound in vedit."
+  },
+  {
+   "id": "higgsfield_video",
+   "label": "Higgsfield video / VFX shot",
+   "requires": [
+    "addon:higgsfield"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 2,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "references/higgsfield.md."
+  }
+ ],
+ "motion_graphic": [
+  {
+   "id": "template",
+   "label": "Shipped or personal template",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit mg templates`; personal ones from `vedit template save`."
+  },
+  {
+   "id": "custom_html",
+   "label": "Custom composition written for this moment (HTML/GSAP/SVG/Canvas)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "edit/custom/<id>.html -> Overlay.mg.file. How good edits become excellent."
+  },
+  {
+   "id": "remotion",
+   "label": "Remotion (React)",
+   "requires": [
+    "core:node"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "mg/remotion; licence note for companies > 3 people."
+  },
+  {
+   "id": "lottie",
+   "label": "LottieFiles animation (lottie-web)",
+   "requires": [
+    "browser|web:"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "check",
+   "privacy": "local",
+   "how": "Download .json (Lottie Simple License / CC), play with lottie-web in a composition."
+  },
+  {
+   "id": "capcut_effect",
+   "label": "CapCut text/animation preset (in the CapCut hand-off)",
+   "requires": [
+    "addon:capcut"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 4,
+   "licence": "check",
+   "privacy": "local",
+   "how": "TextItem.capcut_intro etc.; only appears in the CapCut project."
+  }
+ ],
+ "3d": [
+  {
+   "id": "threejs",
+   "label": "Three.js composition (3D text, logo, particles, product card, camera moves)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "edit/custom/*.html with window.__seek(t); phase 4 adds 3D templates."
+  },
+  {
+   "id": "blender",
+   "label": "Blender headless render",
+   "requires": [
+    "addon:blender"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 1,
+   "licence": "own",
+   "privacy": "local",
+   "how": "phase 4: bpy templates; ask before installing Blender."
+  },
+  {
+   "id": "fusion",
+   "label": "DaVinci Fusion (Studio)",
+   "requires": [
+    "addon:resolve_studio"
+   ],
+   "cost": "paid",
+   "quality": 5,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "references/resolve.md."
+  },
+  {
+   "id": "webai_video",
+   "label": "Web AI generated 3D-looking shot",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:runway|webai:kling|webai:luma"
+   ],
+   "cost": "credits",
+   "quality": 4,
+   "speed": 1,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Ask first."
+  },
+  {
+   "id": "higgsfield_vfx",
+   "label": "Higgsfield VFX",
+   "requires": [
+    "addon:higgsfield"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 2,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Ask with estimate."
+  }
+ ],
+ "vfx": [
+  {
+   "id": "custom_python",
+   "label": "Custom Python FX (numpy/OpenCV per frame -> alpha overlay)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "CustomFX kind=python; `vedit fx save` to reuse."
+  },
+  {
+   "id": "ffmpeg_hook",
+   "label": "FFmpeg filter chain at a render hook",
+   "requires": [
+    "core:ffmpeg"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "CustomFX kind=ffmpeg (glitch, grain, vignette, chromatic shift, blur, curves)."
+  },
+  {
+   "id": "native_vfx",
+   "label": "Native tracking / cutout / depth / stabilize",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "phase 4 (vedit vfx ...)."
+  },
+  {
+   "id": "capcut_vfx",
+   "label": "CapCut effect / tracking in the CapCut hand-off",
+   "requires": [
+    "addon:capcut"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "EffectItem.capcut; tracking done by the owner in CapCut."
+  }
+ ],
+ "music": [
+  {
+   "id": "own_library",
+   "label": "Owner's music library",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit assets search --kind music`."
+  },
+  {
+   "id": "earshot_rank",
+   "label": "Rank candidate tracks by description (earshot ears)",
+   "requires": [
+    "addon:earshot_ears"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Candidates from the library or sources, then `earshot rank` via `vedit sound` (ears installed)."
+  },
+  {
+   "id": "openverse_audio",
+   "label": "Openverse / Wikimedia audio (CC)",
+   "requires": [
+    "web:"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 3,
+   "licence": "cc",
+   "privacy": "local",
+   "how": "`vedit sources search <mood> --kind audio`; NC licences are dropped unless --any-licence; attribution in credits."
+  },
+  {
+   "id": "browser_libraries",
+   "label": "YouTube Audio Library, Pixabay Music, Uppbeat (free tiers) via the browser",
+   "requires": [
+    "browser"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "references/sourcing.md."
+  },
+  {
+   "id": "webai_music",
+   "label": "Suno / Udio (logged in)",
+   "requires": [
+    "browser",
+    "webai:suno|webai:udio"
+   ],
+   "cost": "subscription",
+   "quality": 4,
+   "speed": 2,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Free tiers are non-commercial: flag before publishing."
+  },
+  {
+   "id": "procedural_bed",
+   "label": "Procedural ambience / pulse bed (code)",
+   "requires": [],
+   "cost": "free",
+   "quality": 2,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "CustomFX kind=python output=audio (numpy synthesis)."
+  }
+ ],
+ "sfx": [
+  {
+   "id": "earshot_kit",
+   "label": "earshot kit (252 code-made sounds, measured sync points)",
+   "requires": [
+    "addon:earshot_kits"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit sound cues <p>` then `vedit sound place <p> [--kit crisp|calm|launch|minimal]`; `vedit sound find <words>` for single sounds."
+  },
+  {
+   "id": "vedit_synth",
+   "label": "vedit synth kit (no earshot)",
+   "requires": [],
+   "cost": "free",
+   "quality": 3,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit sound place <p> --kit synth` or `vedit sfx <kind>`."
+  },
+  {
+   "id": "own_library",
+   "label": "Owner's SFX library",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit assets search --kind sfx`."
+  },
+  {
+   "id": "freesound",
+   "label": "Freesound (CC, needs login to download)",
+   "requires": [
+    "browser"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "cc",
+   "privacy": "local",
+   "how": "Browser or `vedit sources search <words> --kind audio` (Openverse indexes Freesound); CC0 / CC-BY only; never log in for the owner."
+  }
+ ],
+ "voiceover": [
+  {
+   "id": "owner_voice",
+   "label": "The owner records it",
+   "requires": [],
+   "cost": "free",
+   "quality": 5,
+   "speed": 1,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Script with the writing pass, then transcribe."
+  },
+  {
+   "id": "offline_tts",
+   "label": "Offline neural TTS (Kokoro/Piper EN; Bangla model if licence allows)",
+   "requires": [],
+   "cost": "free",
+   "quality": 3,
+   "speed": 4,
+   "licence": "check",
+   "privacy": "local",
+   "how": "phase 5."
+  },
+  {
+   "id": "edge_tts",
+   "label": "Edge TTS (free online, bn-BD/bn-IN voices)",
+   "requires": [
+    "web:"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "check",
+   "privacy": "uploads",
+   "how": "phase 5; unofficial endpoint."
+  },
+  {
+   "id": "elevenlabs",
+   "label": "ElevenLabs TTS / clone",
+   "requires": [
+    "addon:elevenlabs"
+   ],
+   "cost": "paid",
+   "quality": 5,
+   "speed": 4,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "`vedit tts speak`."
+  }
+ ],
+ "font": [
+  {
+   "id": "shipped_fonts",
+   "label": "Shipped OFL fonts (Latin + Bangla)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "cc",
+   "privacy": "local",
+   "how": ".cache/fonts (`vedit setup fonts`)."
+  },
+  {
+   "id": "google_fonts",
+   "label": "Google Fonts via the browser",
+   "requires": [
+    "browser|web:"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "cc",
+   "privacy": "local",
+   "how": "Download the TTF into the project, log OFL licence."
+  },
+  {
+   "id": "brand_font",
+   "label": "Brand kit font",
+   "requires": [],
+   "cost": "free",
+   "quality": 5,
+   "speed": 5,
+   "licence": "check",
+   "privacy": "local",
+   "how": "personal/brands/<brand>.json"
+  }
+ ],
+ "thumbnail": [
+  {
+   "id": "native_thumbnail",
+   "label": "Best frame + Claude-designed composition",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit thumbnail frames|make`; custom HTML for bespoke layouts."
+  },
+  {
+   "id": "canva_design",
+   "label": "Canva design with the owner's brand kit",
+   "requires": [
+    "connector:canva"
+   ],
+   "cost": "subscription",
+   "quality": 5,
+   "speed": 3,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Canva MCP generate-design / brand templates, export PNG."
+  },
+  {
+   "id": "webai_image",
+   "label": "Web AI key art + native text overlay",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:chatgpt|webai:firefly|webai:ideogram"
+   ],
+   "cost": "subscription",
+   "quality": 5,
+   "speed": 3,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Generate background/subject art; set the text natively for crisp type."
+  }
+ ],
+ "color_look": [
+  {
+   "id": "grade_preset",
+   "label": "Renderer grade preset",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "edit.color.preset (12 presets)."
+  },
+  {
+   "id": "lut",
+   "label": ".cube LUT (owner's or Claude-generated)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "check",
+   "privacy": "local",
+   "how": "edit.color.lut; phase 3 exports presets as LUTs."
+  },
+  {
+   "id": "match_reference",
+   "label": "Match a reference still/look",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Custom python FX or curves/eq derived from `vedit style analyze` stats."
+  }
+ ],
+ "background_removal": [
+  {
+   "id": "native_matte",
+   "label": "Native matting (offline model)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "phase 4 (vedit vfx matte)."
+  },
+  {
+   "id": "canva_remove_bg",
+   "label": "Canva remove-background (stills)",
+   "requires": [
+    "connector:canva"
+   ],
+   "cost": "subscription",
+   "quality": 5,
+   "speed": 4,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Canva MCP remove-background."
+  },
+  {
+   "id": "chroma",
+   "label": "Chroma key (green screen footage)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Overlay.chroma / CustomFX ffmpeg colorkey."
+  }
+ ],
+ "research": [
+  {
+   "id": "browser_moodboard",
+   "label": "Mood board from Pinterest, Behance, Dribbble, Google, YouTube",
+   "requires": [
+    "browser"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "references/sourcing.md."
+  },
+  {
+   "id": "watch_reference",
+   "label": "Watch a reference video (keyframes + transcript)",
+   "requires": [],
+   "cost": "free",
+   "quality": 5,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "`vedit fetch <url> --to <folder>` (reference only: copyrighted) then `vedit watch <file> --file`; read the grids and transcript; `vedit technique save`."
+  },
+  {
+   "id": "web_search",
+   "label": "Web search for techniques and tutorials",
+   "requires": [
+    "web:"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Then rebuild natively and `vedit technique save`."
+  }
+ ],
+ "critique": [
+  {
+   "id": "self_critique",
+   "label": "Claude's critique loop (frames, QA, ears)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "references/director.md excellence checklist."
+  },
+  {
+   "id": "gemini_watch",
+   "label": "Second opinion: Gemini watches the render (logged in)",
+   "requires": [
+    "browser",
+    "webai:gemini"
+   ],
+   "cost": "subscription",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "uploads",
+   "how": "Ask per project: the video leaves the PC."
+  },
+  {
+   "id": "deep_review",
+   "label": "Parallel critic lenses (subagents)",
+   "requires": [],
+   "cost": "free",
+   "quality": 5,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Only when the owner asks for agents."
+  }
+ ]
 }

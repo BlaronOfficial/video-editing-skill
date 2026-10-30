@@ -165,3 +165,33 @@ Verified on the owner's machine:
 - Studio published as a private artifact; previews uploaded (mp4/jpg/json; the asset store rejects mp3,
   so audio previews are AAC .mp4); 8 db docs written atomically and read back.
 - `vedit doctor` READY with CapCut optional; found Blender 5.2 installed.
+
+### Phase 2 status (2026-10-31): senses and smart sourcing
+
+Built: `sound.py` (earshot kits rendered in an isolated venv, built-in synth kit as the standalone
+fallback, cue proposal from the edit, placement on sync points with role offsets, anchors, take rotation,
+min gaps, levels against the music bed or the voice through numpy K-weighting, music stop-downs in the
+renderer and the Studio, sync check through earshot's model-free detector, ears in QA when installed),
+`earshot_bridge.py`, `watch.py` + `crv_bridge.py` (claude-real-video frames/dedup in place, timestamped
+grids, native fallback, speaker diarization with ask-first models, multicam by speaker with audio sync,
+footage memory in SQLite FTS5 trigram, link fetch with captions and provenance), Whisper no-speech gate,
+`--engine subs` transcripts, `writing.py` (English writing pass + video text formats), `sources/`
+(Openverse, Wikimedia, Pexels, Pixabay; licence flags; credits), `inbox.py` (Downloads pickup with
+provenance and duplicate check; vtracer vectorize), routes updated, Studio "Pin sound" chooser by kit
+role, references audio/sourcing/webai/watching/writing (pinterest.md folded into sourcing.md).
+
+Verified on the owner's machine:
+- `tests/test_phase2.py --render --net`: 26/26 (placement lands on cues, anchored effects follow a
+  re-cut, Python == Studio JS stop-downs, preview render heard on its cues, subtitles, writing, licences,
+  inbox, memory, multicam merge, Wikimedia search + download). `tests/test_v2.py` still 22/22.
+- earshot launch/crisp kits render without torch (64-72 takes, ~2-4 min once, then cached); in a real
+  render 5/6 effects answered within 40 ms (median 11 ms); the one buried pop is flagged by QA.
+- Watching the 4:43 E2E source: 179 frames kept of 284, photo inserts and crossfades caught.
+- Two-voice dialogue (Windows voices): 2 speakers, every line attributed correctly; multicam with a
+  1.3 s offset angle synced exactly and the render transcribes back word for word.
+- Headless Studio with kit sounds + music: loads, plays, clean console; Pin sound adds an anchored
+  kit effect (rev +1).
+
+Waiting on the owner: ears download (~1.3 GB), the logged-in browser probe + one Gemini image through the
+inbox, Canva background removal on one image. Openverse's image API returned 504 for every client during
+testing (their outage; audio search worked earlier the same day).
