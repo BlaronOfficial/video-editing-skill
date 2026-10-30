@@ -71,7 +71,10 @@ own terms), Pixabay Music. For sound effects prefer the earshot kit (code-made, 
 
 ## Connectors
 - **Canva** (`mcp__claude_ai_Canva__*`): `generate-image`, `remove-background`, `separate-image-layers`
-  (parallax plates), brand kits and designs for thumbnails, export. Uploading the owner's footage or
+  (parallax plates), brand kits and designs for thumbnails, export. Send local files with `create-upload-url`
+  (POST the raw bytes); Canva cannot fetch Wikimedia URLs. Tool results show only a small preview of a
+  generated or cut-out image: full size comes out through a design export, so Canva suits thumbnails and
+  designs; for video elements a flat background plus a key is faster. Uploading the owner's footage or
   images to Canva sends them to a third party: ask once per project.
 - **Google Drive**: import footage and assets, deliver renders (ask before sharing links).
 

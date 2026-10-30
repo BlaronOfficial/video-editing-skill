@@ -713,6 +713,17 @@
  ],
  "background_removal": [
   {
+   "id": "flat_key",
+   "label": "Generate or shoot on a flat background, then key it out",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Ask web AIs for a pure white or #00FF00 background; `vedit inbox key <png>` (or Overlay.chroma; `vedit inbox vectorize` for icons. Verified with a Gemini icon on 2026-10-31."
+  },
+  {
    "id": "native_matte",
    "label": "Native matting (offline model)",
    "requires": [],
@@ -730,11 +741,11 @@
     "connector:canva"
    ],
    "cost": "subscription",
-   "quality": 5,
-   "speed": 4,
+   "quality": 4,
+   "speed": 2,
    "licence": "ai-service",
    "privacy": "uploads",
-   "how": "Canva MCP remove-background."
+   "how": "Upload bytes with create-upload-url + an octet-stream POST (Canva cannot fetch Wikimedia URLs), then remove-background. The connector returns only a ~200 px preview: full size needs the cut-out placed in a Canva design and exported as PNG with a transparent background (Pro). Best for thumbnails and designs built in Canva; for video elements prefer flat_key or native_matte."
   },
   {
    "id": "chroma",

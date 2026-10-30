@@ -53,8 +53,9 @@ vedit inbox mark                                   # before you generate
 ... generate, then use the site's own Download button (files land in Downloads) ...
 vedit inbox pull <p> --service gemini --prompt "<the prompt>" --url <conversation url> --register --wait 30
 ```
-Then post-process: background removal (Canva connector `remove-background`, `colorkey` on a flat
-background, or native matting), `vedit inbox vectorize <png>` for icons that should scale, resize and
+Then post-process: background removal (`vedit inbox key <file>` on the flat background you asked
+for: fastest and full resolution; Canva `remove-background` for photos with busy backgrounds, see `references/sourcing.md`; native
+matting in phase 4), `vedit inbox vectorize <png>` for icons that should scale, resize and
 colour-match to the grade. Generated video clips are silent: add sound in vedit.
 
 ## 5. Licences

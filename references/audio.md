@@ -66,7 +66,10 @@ Hand-placed effects still work: add an `audio` clip with `role: "sfx"` (no `sfx`
 - **Ears** (`vedit setup earshot --ears`, ~1.3 GB: torch CPU + CLAP + AST; ask first): QA adds earshot's
   timeline (what is heard, tagged), an annotated sheet (`qa/ears_sheet.png`: spectrogram, events, frames,
   cues) and a critique scorecard. Look at the sheet like the frame sheets. `vedit sound check <p> --ears`
-  runs it alone.
+  runs it alone. On a laptop CPU it takes a few minutes per 30 s (model load included): use
+  `vedit qa <p> --no-ears` while iterating and let the final QA listen. The critique compares against
+  earshot's bundled music-led launch films: for talking-head edits read its music and density notes as
+  hints, not rules (`earshot profile` can build a profile from the owner's own reference videos).
 
 ## Voiceover
 Recorded VO: add as a source with `--origin vo`, transcribe it, cut it like A-roll (main track can be an

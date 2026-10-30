@@ -145,6 +145,27 @@ def pull(project_root: Path, *, since: str | float | None = None, service: str |
     return {"pulled": got, "duplicates": dup, "from": str(folder or downloads_dir()), "since": _since(since)}
 
 
+def key(image: Path, out: Path | None = None, *, color: str = "auto", tolerance: int = 12, softness: int = 12) -> Path:
+    """Flat background -> transparent PNG (web AI elements asked for on pure white or #00FF00). The background
+    colour is read from the corners unless given; alpha ramps over `softness` levels past `tolerance`."""
+    import numpy as np
+    from PIL import Image
+    im = np.asarray(Image.open(image).convert("RGB")).astype(np.int16)
+    if color == "auto":
+        h, w, _ = im.shape
+        corners = np.concatenate([im[:8, :8].reshape(-1, 3), im[:8, -8:].reshape(-1, 3), im[-8:, :8].reshape(-1, 3),
+                                  im[-8:, -8:].reshape(-1, 3)])
+        bg = np.median(corners, axis=0)
+    else:
+        c = color.lstrip("#")
+        bg = np.array([int(c[i:i + 2], 16) for i in (0, 2, 4)])
+    dist = np.abs(im - bg).max(axis=2)
+    alpha = np.clip((dist - tolerance) * (255 / max(1, softness)), 0, 255).astype(np.uint8)
+    out = out or image.with_name(image.stem + "_cut.png")
+    Image.fromarray(np.dstack([im.astype(np.uint8), alpha])).save(out)
+    return out
+
+
 def vectorize(image: Path, out: Path | None = None, *, colors: int = 6) -> Path:
     """Raster icon -> SVG with vtracer (MIT), installed on first use into .cache/tools/vtracer (~3 MB)."""
     from . import addons
@@ -180,6 +201,9 @@ def cmd_inbox(a) -> None:
     if a.action == "vectorize":
         print_json({"svg": str(vectorize(Path(a.target), colors=a.colors))})
         return
+    if a.action == "key":
+        print_json({"png": str(key(Path(a.target), color=a.color))})
+        return
     p = find(a.target)
     res = pull(p.root, since=a.since, service=a.service, prompt=a.prompt, url=a.url, licence=a.licence,
                folder=Path(a.folder) if a.folder else None, move=a.move, match=a.match, wait=a.wait)
@@ -194,12 +218,13 @@ def cmd_inbox(a) -> None:
 
 def register_cli(sp) -> None:
     s = sp.add_parser("inbox", help="bring browser downloads (web AI, Pinterest, stock) into a project with provenance")
-    s.add_argument("action", choices=["mark", "list", "pull", "vectorize"])
-    s.add_argument("target", nargs="?", default="", help="project (pull) or image (vectorize)")
+    s.add_argument("action", choices=["mark", "list", "pull", "key", "vectorize"])
+    s.add_argument("target", nargs="?", default="", help="project (pull) or image (key, vectorize)")
     s.add_argument("--since", help="'10m', '2h', epoch seconds from `inbox mark`, or 'YYYY-MM-DD HH:MM'")
     s.add_argument("--service", help="gemini, chatgpt, ideogram, firefly, canva, pinterest, google, ...")
     s.add_argument("--prompt"); s.add_argument("--url"); s.add_argument("--licence"); s.add_argument("--folder")
     s.add_argument("--match", help="regex on file names"); s.add_argument("--move", action="store_true")
     s.add_argument("--wait", type=float, default=0.0, help="seconds to wait for a download to land")
     s.add_argument("--register", action="store_true"); s.add_argument("--colors", type=int, default=6)
+    s.add_argument("--color", default="auto", help="key: background colour (#RRGGBB) or auto (from the corners)")
     s.set_defaults(fn=cmd_inbox)

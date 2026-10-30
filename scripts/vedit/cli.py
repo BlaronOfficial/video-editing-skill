@@ -305,7 +305,7 @@ def cmd_qa(a):
     e = p.edit()
     render_path = a.render or str(p.root / "render" / f"{e.name}.mp4")
     target = e.output.audio.target_lufs or config.load()["render"]["target_lufs"]
-    print_json(check(e, render_path, p.sub("qa"), target_lufs=target))
+    print_json(check(e, render_path, p.sub("qa"), target_lufs=target, listen=not a.no_ears))
 
 
 def _pro_allowed(a, e) -> bool:
@@ -635,7 +635,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-captions", action="store_true")
     s.add_argument("--force", action="store_true", help="final render without an approved plan (owner asked)")
     s.set_defaults(fn=cmd_render)
-    s = sp.add_parser("qa"); s.add_argument("path"); s.add_argument("--render"); s.set_defaults(fn=cmd_qa)
+    s = sp.add_parser("qa"); s.add_argument("path"); s.add_argument("--render")
+    s.add_argument("--no-ears", action="store_true", help="skip earshot's ears (minutes on CPU) for a quick check")
+    s.set_defaults(fn=cmd_qa)
 
     s = sp.add_parser("capcut")
     s.add_argument("action", choices=["calibrate", "list", "build", "close", "launch", "resources", "aliases", "diff",
