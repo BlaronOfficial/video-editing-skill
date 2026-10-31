@@ -52,6 +52,9 @@ class Source(_Model):
     has_audio: bool = True
     transcript: Optional[str] = None        # path to the normalised transcript JSON
     origin: Optional[str] = None            # provenance: "camera", "higgsfield", "pinterest:<url>", "library", ...
+    color: Optional[dict[str, Any]] = None   # footage.analyze(): hdr, bt2020_sdr, log, interlaced, timing, device, ...
+    lut: Optional[str] = None                # camera conversion LUT (Log footage), applied at decode
+    notes: list[str] = Field(default_factory=list)   # what footage.analyze() found, for the director
 
 
 class Transform(_Model):
@@ -113,6 +116,14 @@ class Clip(_Model):
     capcut_filter: Optional[str] = None
     capcut_animation_in: Optional[str] = None
     capcut_animation_out: Optional[str] = None
+    # clean-up and time FX (vedit fx ...; rendered at decode, before framing)
+    src_crop: Optional[dict[str, int]] = None    # {x, y, w, h} in source pixels: black bars, a region
+    projection: Optional[dict[str, float]] = None  # 360 -> flat: {yaw, pitch, roll, h_fov, v_fov, input: "e"}
+    stabilize: Optional[dict[str, float]] = None  # vidstab: {smoothing: 15, shakiness: 5, zoom: 0}
+    denoise: Optional[Literal["light", "medium", "strong"]] = None
+    reverse: bool = False
+    smooth: Optional[Literal["interpolate", "blend"]] = None   # slow motion: motion-interpolated or blended frames
+    redact: list[dict[str, Any]] = Field(default_factory=list)  # [{x, y, w, h (source px), mode blur|pixelate|delogo, start?, end?}]
     label: str = ""                          # "hook", "take 3", "broll: city"
 
     @property
@@ -316,6 +327,10 @@ class AudioSettings(_Model):
     voice_enhance: bool = True
     target_lufs: Optional[float] = None
     duck_db: float = -14.0                   # music level reduction under speech
+    gate_db: Optional[float] = None          # voice: noise gate threshold (dBFS), e.g. -45 for room noise between words
+    compress: Optional[str] = None           # voice: extra compressor "threshold_db:ratio", e.g. "-20:4"
+    limit_db: Optional[float] = None         # voice: limiter ceiling before the mix
+    widen: Optional[float] = None            # master: stereo widening 0..1 (needs real stereo content)
 
 
 class Output(_Model):
@@ -325,6 +340,7 @@ class Output(_Model):
     preset: Optional[str] = None
     audio: AudioSettings = Field(default_factory=AudioSettings)
     extra_ratios: list[str] = Field(default_factory=list)   # e.g. ["1:1", "16:9"] via auto-reframe
+    platform: Optional[str] = None           # delivery destination (tiktok, reels, shorts, youtube, ...): QA checks it
 
 
 class CapCutSettings(_Model):

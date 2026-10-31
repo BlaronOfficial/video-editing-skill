@@ -129,7 +129,7 @@ def init(footage: str | Path, *, name: str | None = None, ratio: str = "9:16", f
             sid, n = f"{base}_{n}", n + 1
         dw, dh = info.display_size
         sources[sid] = Source(id=sid, path=str(f), kind=info.kind, duration=round(info.duration, 3), width=dw, height=dh,
-                              fps=round(info.fps, 3), has_audio=info.has_audio, origin="camera")
+                              fps=round(info.fps, 3), has_audio=info.has_audio, origin="camera", **_footage(f, info.kind))
         if info.kind == "video" and first_fps is None and info.fps:
             first_fps = info.fps
     edit = Edit(name=name or slug(footage.name), canvas=Canvas(width=w, height=h, fps=fps or _snap_fps(first_fps or 30)),
@@ -142,6 +142,18 @@ def init(footage: str | Path, *, name: str | None = None, ratio: str = "9:16", f
                     "workflow": {"mode": config.load().get("mode", {}).get("default", "plan"), "plan_status": "draft",
                                  "stage": "cut", "approved_stages": [], "history": []}})
     return proj
+
+
+def _footage(path, kind: str) -> dict:
+    """HDR / Log / VFR / interlacing / black bars / device, measured once when a video source comes in."""
+    if kind != "video":
+        return {}
+    from .footage import analyze, notes
+    try:
+        a = analyze(path)
+    except Exception as exc:             # analysis must never block a project
+        return {"notes": [f"footage analysis failed: {exc}"]}
+    return {"color": a, "notes": notes(a)}
 
 
 def _snap_fps(fps: float) -> float:
@@ -161,6 +173,7 @@ def add_source(proj: Project, path: str | Path, *, origin: str = "library", sid:
         sid, n = f"{base}_{n}", n + 1
     dw, dh = info.display_size
     edit.sources[sid] = Source(id=sid, path=str(Path(path).resolve()), kind=info.kind, duration=round(info.duration, 3),
-                               width=dw, height=dh, fps=round(info.fps, 3), has_audio=info.has_audio, origin=origin)
+                               width=dw, height=dh, fps=round(info.fps, 3), has_audio=info.has_audio, origin=origin,
+                               **_footage(path, info.kind))
     proj.save_edit(edit)
     return sid

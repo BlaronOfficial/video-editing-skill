@@ -207,7 +207,11 @@ def cmd_plan(a):
         keeps = []
         for sid, src in e.sources.items():
             if src.transcript and (not a.source or sid in a.source):
-                keeps += cuts.auto_keeps(sid, src.transcript, max_pause=a.max_pause)
+                if a.speech_aware:          # never cut inside a sentence
+                    from .audiotools import speech_aware_keeps
+                    keeps += speech_aware_keeps(sid, src.transcript, max_pause=max(a.max_pause, 0.5))
+                else:
+                    keeps += cuts.auto_keeps(sid, src.transcript, max_pause=a.max_pause)
         out = p.root / "keeps_auto.json"
         out.write_text(json.dumps(keeps, indent=2, ensure_ascii=False), encoding="utf-8")
         print_json({"keeps": str(out), "segments": len(keeps)})
@@ -294,6 +298,9 @@ def cmd_render(a):
         raise VeditError(f"Overlays not rendered yet: {missing}. Run `vedit mg render {a.path}` first.")
     out = Path(a.out) if a.out else p.sub("render") / ("preview.mp4" if a.preview else f"{e.name}.mp4")
     t0 = time.time()
+    if a.dry_run:
+        print_json(_render_plan(e, out, a))
+        return
     if a.lossless:
         from .lossless import render_edit
         res = render_edit(e, out, mode=a.mode, captions=not a.no_captions)
@@ -308,6 +315,23 @@ def cmd_render(a):
     print_json(res)
 
 
+def _render_plan(e, out, a) -> dict:
+    """What a render would do, before spending minutes on it."""
+    from .knobs import bake
+    from .lossless import cuts_only
+    b = bake(e.layout()).active()
+    fx = sorted({k for c in [*b.main, *b.broll] for k, on in (("stabilize", c.stabilize is not None), ("denoise", bool(c.denoise)),
+                 ("reverse", c.reverse), ("smooth", bool(c.smooth)), ("redact", bool(c.redact)), ("crop", bool(c.src_crop)),
+                 ("360", bool(c.projection))) if on})
+    hdr = [sid for sid, s in b.sources.items() if (s.color or {}).get("hdr") or (s.color or {}).get("bt2020_sdr")]
+    return {"dry_run": True, "output": str(out), "mode": "lossless" if a.lossless else ("preview" if a.preview else "final"),
+            "canvas": f"{b.canvas.width}x{b.canvas.height}@{b.canvas.fps:g}", "duration": round(b.duration, 2),
+            "main_clips": len(b.main), "broll": len(b.broll), "overlays": len(b.overlays), "audio": len(b.audio),
+            "captions": b.captions.enabled, "grade": b.color.preset or b.color.lut, "clip_fx": fx,
+            "hdr_tonemapped": hdr, "lossless_possible": not cuts_only(b),
+            "platform": b.output.platform, "overwrites_existing": Path(out).exists()}
+
+
 def cmd_qa(a):
     from . import config
     from .qa import check
@@ -315,7 +339,7 @@ def cmd_qa(a):
     e = p.edit()
     render_path = a.render or str(p.root / "render" / f"{e.name}.mp4")
     target = e.output.audio.target_lufs or config.load()["render"]["target_lufs"]
-    print_json(check(e, render_path, p.sub("qa"), target_lufs=target, listen=not a.no_ears))
+    print_json(check(e, render_path, p.sub("qa"), target_lufs=target, listen=not a.no_ears, platform=a.platform))
 
 
 def _pro_allowed(a, e) -> bool:
@@ -629,7 +653,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--min", type=float, default=0.35); s.set_defaults(fn=cmd_silences)
     s = sp.add_parser("plan"); s.add_argument("action", choices=["auto", "apply", "validate", "schema"]); s.add_argument("path", nargs="?")
     s.add_argument("keeps", nargs="?"); s.add_argument("--source", nargs="*"); s.add_argument("--max-pause", type=float, default=0.3)
-    s.add_argument("--append", action="store_true"); s.set_defaults(fn=cmd_plan)
+    s.add_argument("--append", action="store_true")
+    s.add_argument("--speech-aware", action="store_true", help="auto: only cut pauses between sentences (and very long ones)")
+    s.set_defaults(fn=cmd_plan)
     s = sp.add_parser("captions"); s.add_argument("action", choices=["build", "export", "styles"]); s.add_argument("path", nargs="?")
     s.add_argument("--style"); s.add_argument("--max-words", type=int); s.add_argument("--format", default="srt", choices=["srt", "vtt", "ass"])
     s.set_defaults(fn=cmd_captions)
@@ -646,9 +672,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--force", action="store_true", help="final render without an approved plan (owner asked)")
     s.add_argument("--lossless", action="store_true", help="cuts-only edits: smart cut, no re-encode outside the cuts")
     s.add_argument("--mode", default="smart", choices=["smart", "keyframe", "accurate"])
+    s.add_argument("--dry-run", action="store_true", help="print the plan (what renders, FX, HDR handling) and stop")
     s.set_defaults(fn=cmd_render)
     s = sp.add_parser("qa"); s.add_argument("path"); s.add_argument("--render")
     s.add_argument("--no-ears", action="store_true", help="skip earshot's ears (minutes on CPU) for a quick check")
+    s.add_argument("--platform", help="check against a destination (tiktok, reels, shorts, youtube, x, ...)")
     s.set_defaults(fn=cmd_qa)
 
     s = sp.add_parser("capcut")
@@ -707,9 +735,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # v2 command groups live next to their modules
     from . import (capabilities, custom, extend, extensions, handoff, knobs, learn, models, modes, routes, sound, studio,
-                   studio_local, suggest, watch, writing, inbox, sources)
+                   studio_local, suggest, toolkit, watch, writing, inbox, sources)
     for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend, sound,
-                watch, writing, inbox, sources, handoff):
+                watch, writing, inbox, sources, handoff, toolkit):
         mod.register_cli(sp)
     extensions.register_cli(sp)
     return ap

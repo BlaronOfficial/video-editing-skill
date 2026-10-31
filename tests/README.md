@@ -16,5 +16,7 @@ v2 phase checks (from the skill root, on copies of the E2E project in `tests/foo
 
     scripts/.venv/Scripts/python.exe tests/test_v2.py
     scripts/.venv/Scripts/python.exe tests/test_phase2.py [--render] [--net]
+    scripts/.venv/Scripts/python.exe tests/test_port.py                       # ffmpeg-skill port: footage, delivery,
+                                                                              # clean-up FX, audio, extras (~10 min)
     scripts/.venv/Scripts/python.exe tests/test_phase3.py [--full] [--apps]   # hand-offs; --apps uses portable
                                                                               # Shotcut/LosslessCut in .cache/tools

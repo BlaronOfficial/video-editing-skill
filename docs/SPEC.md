@@ -228,7 +228,7 @@ Verified on the owner's machine (`tests/test_phase3.py --full --apps`: 38/38; te
   re-saved .llc (JSON5) read back.
 - Not testable here: DaVinci Resolve (not installed) and Premiere/Final Cut imports; marked untested.
 
-### Next: ffmpeg-skill port (agreed 2026-10-31), then phase 4
+### ffmpeg-skill port (agreed 2026-10-31, built 2026-11-01)
 
 Hybrid port of kajisho5/ffmpeg-skill (MIT): HDR/Dolby Vision to SDR, Log detection, VFR guard and device
 notes in probe/render; delivery presets, size targets, compliance checks, SSIM compare, repair in
@@ -237,3 +237,34 @@ QA/export; clean-up and time FX (stabilize, denoise, deinterlace, redact/delogo,
 compressor, limiter, widen, 5.1 downmix, speech-aware silence, filler removal); extras (grid,
 audiogram/waveform, Ken Burns stills, batch with caching, HTML report); its working rules (fixed end-of-job
 report, never overwrite originals, dry-run plans). Its gotchas and device notes go into references.
+
+Built: `footage.py` (per-source analysis on project init: PQ/HLG/Dolby Vision, BT.2020 SDR, BT.601 matrix,
+Log by signalstats, interlacing, frame timing by packets, black bars, device; one input chain used by
+render segments, b-roll, Studio proxies and frozen frames: deinterlace, tone map (zscale, mobius, 100-nit
+reference white), gamut/matrix conversion, camera LUT), renders tagged BT.709 in the filter graph;
+`delivery.py` (platform table with specs and safe zones, PASS/WARN/FAIL checks split into format and
+judgement rows, export presets with fit pad/crop/blur, measured two-pass loudnorm that never lifts
+ambience, two-pass size targets, SSIM/PSNR compare, repair, safe-zone frames; QA checks
+`output.platform`); `fx.py` (clip fields rendered at decode: redact, src_crop, 360 projection, two-pass
+vidstab, denoise, reverse, smooth slow motion; edit operations for speed ramps and freeze frames;
+one-off `vedit fix` tools that never overwrite); `audiotools.py` (multi-window drift-corrected sync with
+a weighted line fit, recorder replacement by resampling, gate/compressor/limiter/widen in
+`output.audio`, downmix, extract, speech-aware rough cut); `extras.py` (grid, audiogram/waveform, Ken
+Burns stills, cached parallel batch, HTML report); smart cut falls back to accurate cuts on variable frame
+rate and open-GOP streams; `render --dry-run`; the end-of-job report and never-overwrite rules in SKILL.md;
+references footage, delivery, cleanup (+ audio, extras, workflow).
+
+Verified (`tests/test_port.py`: 50/50; test_v2 22/22, test_phase2 --render 24/24, test_phase3 35/35):
+- HDR -> SDR: tone-mapped PQ is 4x closer to the SDR original than the raw decode (mean diff 21 vs 95),
+  HLG likewise; an HDR b-roll in a real render comes out saturated, not washed out. BT.601 sources match
+  the original after conversion (2.3/255); renders carry BT.709 tags.
+- Detection: PQ, HLG, Log-looking, interlaced, VFR, black bars, open-GOP HEVC all found; SDR stays clean.
+- Stabilize: jitter on a shaken real shot 11.8 -> 6.8. Denoise on real grain: +0.8 / +3 dB (hqdn3d),
+  +4-6 dB (nlmeans, slow). Redact, reverse, smooth (2x with new frames), loop, v360, straighten measured.
+- Ramp/freeze/denoise/stabilize/HDR b-roll render together at the right length; `--dry-run` plans only.
+- Delivery: reels export 1080x1920 passes every row at -14.0 LUFS; HDR delivered as BT.709 for X; a 30 s
+  clip fits 2 MB by two-pass; an HDR 16:9 file fails Reels on colour and aspect; repair recovers a
+  damaged recording; QA adds platform rows and a safe-zone frame.
+- Sync: 200 ppm injected drift found as 188 ppm, start offset within 1 ms; the replaced recorder track
+  lines up at both ends (1 ms, ~20 ppm residual). Speech-aware cuts land only on sentence ends or long
+  pauses. Grid, audiogram, Ken Burns, cached batch (second run all cached), HTML report.

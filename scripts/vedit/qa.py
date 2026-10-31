@@ -23,7 +23,7 @@ def _detect(src: Path, video_filter: str, pattern: str) -> list[tuple[float, flo
 
 
 def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lufs: float = -14.0,
-          listen: bool = True) -> dict:
+          listen: bool = True, platform: str | None = None) -> dict:
     from .knobs import bake
     edit = bake(edit.layout()).active()
     render_path, out_dir = Path(render_path), Path(out_dir)
@@ -144,8 +144,23 @@ def check(edit: Edit, render_path: str | Path, out_dir: str | Path, *, target_lu
                     sheets.append(ears["sheet"])
             except Exception as exc:
                 ears = {"error": str(exc)}
+    delivery = None
+    platform = platform or edit.output.platform
+    if platform:                          # the destination's own limits (format rows are fixable, judgement rows are the owner's)
+        from .delivery import check as dcheck, safe_frame
+        try:
+            delivery = dcheck(render_path, platform, content=False)
+            for r in delivery["rows"]:
+                if r["status"] != "PASS":
+                    issue(f"delivery_{r['check'].replace(' ', '_')}", f"{delivery['platform']}: {r['check']} {r['value']} "
+                          f"(expected {r['expect']}){' - ' + r['fix'] if r['fix'] else ''}",
+                          severity="error" if r["status"] == "FAIL" and r["kind"] == "format" else "warn")
+            mid = (edit.captions.chunks[len(edit.captions.chunks) // 2].start + 0.2) if edit.captions.chunks else info.duration / 2
+            sheets.append(str(safe_frame(render_path, platform, out_dir / f"safe_{delivery['platform']}.png", at=mid)))
+        except Exception as exc:
+            delivery = {"error": str(exc)}
     report = {"render": str(render_path), "duration": round(info.duration, 2), "loudness": loud, "issues": issues,
-              "sfx": sfx, "ears": ears,
+              "sfx": sfx, "ears": ears, "delivery": delivery,
               "errors": sum(1 for i in issues if i["severity"] == "error"), "sheets": sheets, "pops": pops,
               "silences": silences, "black": blacks}
     write_json(out_dir / "report.json", report)

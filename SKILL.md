@@ -1,6 +1,6 @@
 ---
 name: video-editing-skill
-description: Professional AI video editing and motion design with Claude as the director. A native engine (FFmpeg, HTML/GSAP/Three.js motion graphics, custom code) turns raw footage - talking-head shorts, long-form YouTube, ads, faceless/voiceover - into finished videos with transcript-based cuts (pauses, fillers, retakes), word-timed captions (English, Bangla, Banglish), graphics, b-roll, music and SFX, colour, reframes, shorts from long videos, thumbnails and voiceover. Plan mode opens a live Studio (a Claude Artifact) to preview, tune and approve the edit before anything renders. It discovers and mixes whatever this session can use - logged-in web AI tools (Gemini, ChatGPT, Canva...), MCP connectors, the browser for research and assets - and offers optional hand-offs to CapCut, DaVinci Resolve, Premiere/Final Cut and LosslessCut. Use whenever the user wants to edit, cut, trim, caption, subtitle, reframe, clip, grade or add motion graphics or effects to video, make reels, shorts, TikToks or YouTube videos, batch-edit clips, or mentions CapCut, DaVinci Resolve or LosslessCut.
+description: AI video editing and motion design with Claude as the director. A native engine (FFmpeg, HTML/GSAP/Three.js motion graphics, custom code) turns raw footage - talking heads, YouTube, ads, faceless/voiceover - into finished videos: transcript cuts, word-timed captions (English, Bangla, Banglish), graphics, b-roll, music and SFX, colour, reframes, shorts, thumbnails, voiceover. It fixes camera footage (iPhone HDR, Log, variable frame rate, shake, grain), syncs external mics and checks each platform's specs. Plan mode opens a live Studio (a Claude Artifact) to preview and approve before rendering. It mixes what the session offers (logged-in web AIs like Gemini or Canva, MCP connectors, the browser) and hands off to CapCut, DaVinci Resolve, Premiere, Final Cut and LosslessCut. Use whenever the user wants to edit, cut, caption, reframe, grade, stabilize, export or add graphics or effects to video, make reels, shorts, TikToks or YouTube videos, or mentions CapCut, DaVinci Resolve or LosslessCut.
 ---
 
 # Video editing (vedit)
@@ -44,6 +44,26 @@ there. Details and the Claude-app setup: `references/setup.md`.
 8. **Log decisions** with `vedit project log <p> "<decision>"` so a later session can continue.
 9. **Respect the mode.** In plan and step mode nothing renders final, hands off or spends money until the
    owner approves (`vedit workflow status <p>`). `vedit render` (final) refuses until then.
+10. **Never overwrite the owner's originals.** Outputs go into `edit/` or next to the input with a suffix;
+   tools refuse to overwrite their input and refuse an existing output unless you pass `--overwrite` for a
+   file this job made. Before long encodes, run with `--dry-run` and read the plan.
+11. **Read the source notes** (`vedit project info`, `vedit footage check`): HDR, Log, variable frame rate,
+   black bars and the device change what you can promise (`references/footage.md`).
+
+## End-of-job report
+
+Finish every job with these five lines, numbers from the tools' JSON (never from memory), in the owner's
+language (keep the labels in English):
+```
+Done: final.mp4 - 59.98 s, 1080x1920, 30 fps, H.264, AAC stereo, -14.0 LUFS
+Steps: cut (speech-aware) -> captions (karaoke) -> graphics x4 -> music + 6 SFX -> grade -> render -> export reels
+Check: reels - 13/13 pass (vedit delivery check / qa)
+Look: qa/cuts_01.png, qa/safe_reels.png (captions clear of the UI, hook title readable)
+Notes: source was iPhone HDR, tone-mapped to SDR; one judgement call left: 92 s is over Reels' 90 s
+```
+A failure starts with `Failed:` and quotes the tool's error; a partial result is `Done:` with the shortfall in
+`Notes:`. Name anything you did not verify (an editor you could not open, ears not installed). Never
+describe a fix you did not run.
 
 ## Modes
 
@@ -66,7 +86,7 @@ to run, so work outside Claude Code's plan mode.)
 | 3. Understand | Create the project, transcribe, pack; read `takes_packed.md`; watch the footage (grids); speakers for interviews | `vedit project init` · `vedit transcribe` · `vedit pack` · `vedit watch` · `vedit speakers` |
 | 4. Directions | 2-3 treatments (hook, pacing, look, sound, captions, mood board), each with the ops that set it up | `vedit directions add <p> --file` |
 | 5. Draft | Cut, captions, graphics pinned to words, b-roll and assets (libraries, browser, web AI), sound kit on cues, look. Route every need; write custom code when templates fall short | `vedit plan apply` · `vedit words --find` · `vedit route plan <need>` · `vedit sources` · `vedit inbox pull` · `vedit sound cues/place` |
-| 6. Critique | Watch and listen to a preview against the excellence checklist; check your own words; fix; turn real judgement calls into suggestion cards | `vedit render --preview` · `vedit watch --render` · `vedit qa` · `vedit text check` · `vedit suggest add` |
+| 6. Critique | Watch and listen to a preview against the excellence checklist; check your own words; check the destination's limits and safe zones; fix; turn real judgement calls into suggestion cards | `vedit render --preview` · `vedit watch --render` · `vedit qa --platform <p>` · `vedit text check` · `vedit suggest add` |
 | 7. Studio | Build previews, publish/sync the Studio, answer "Send to Claude" notes by applying the owner's ops | `vedit studio build/docs/apply` · `references/studio.md` |
 | 8. Execute | After approval: graphics, custom FX, final render, QA (look at the sheets), agreed hand-offs (Execute writes the file packages; CapCut and Resolve Studio import are yours to run), thumbnail, post copy | `vedit execute` · `vedit qa` · `vedit handoff make` · `vedit capcut build` · `vedit resolve import` |
 | 9. Learn | Turn feedback into rules, log which routes worked, learn from the owner's edits in CapCut or any NLE (and bring their trims back), index the footage for later | `vedit learn note` · `vedit route log` · `vedit capcut diff --learn` · `vedit handoff diff --learn` · `vedit memory index` |
@@ -101,4 +121,7 @@ FX are how edits go from good to excellent. Templates are a starting point, not 
 | The owner's logged-in web AI tools (Gemini, ChatGPT, Canva, Firefly...) | `references/webai.md` |
 | Writing titles, on-screen text, post copy, scripts (English) | `references/writing.md` |
 | Shorts, reframe, thumbnails, post copy, voiceover, batch | `references/extras.md` |
+| Camera footage: HDR, Log, variable frame rate, interlacing, black bars, devices | `references/footage.md` |
+| Platforms, delivery checks, export presets, size targets, safe zones, repair | `references/delivery.md` |
+| Clean-up and time FX: stabilize, denoise, redact, straighten, 360, speed ramps, freeze, reverse | `references/cleanup.md` |
 | Setup, add-ons, models, MCP, Claude app, troubleshooting | `references/setup.md` |

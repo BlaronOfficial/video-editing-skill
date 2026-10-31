@@ -26,6 +26,9 @@ vedit project init "D:/shoots/2026-10-26" --ratio 9:16 --name reel_ai_editing
 ```
 Every media file in the folder becomes a source with an id (slug of the file name). Outputs go to
 `<footage>/edit/`. Add b-roll/music later with `vedit project add-source <p> --file <path> --origin library`.
+Each video source is measured on the way in (HDR, Log, variable frame rate, interlacing, black bars,
+device): read `notes` in edit.json's sources, or `vedit footage check <p>` (`references/footage.md`). If the
+destination is known, set it now (`"output": {"platform": "reels"}`) so QA checks its limits and safe zones.
 
 ## 3. Transcribe and read
 

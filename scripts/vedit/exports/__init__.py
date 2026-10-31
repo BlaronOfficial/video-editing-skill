@@ -286,6 +286,16 @@ def flatten(edit: Edit, *, overlay_files: dict[str, str] | None = None, graphics
                 it.note = f"transition was '{tr.type}' (exported as a dissolve)"
         if c.color:
             it.note = (it.note + "; " if it.note else "") + f"clip grade '{c.color}'"
+        fx = [n for n, on in (("stabilized", c.stabilize is not None), (f"denoise {c.denoise}", bool(c.denoise)),
+                              ("reversed", c.reverse), (f"{c.smooth} slow motion", bool(c.smooth)),
+                              ("black bars cropped", bool(c.src_crop)), ("360 reframed", bool(c.projection)),
+                              (f"{len(c.redact)} redaction(s)", bool(c.redact))) if on]
+        if s.color and (s.color.get("hdr") or s.color.get("bt2020_sdr")):
+            fx.append("HDR source tone-mapped to SDR in vedit (the editor shows the original HDR)")
+        if s.lut:
+            fx.append(f"camera LUT {Path(s.lut).name}")
+        if fx:
+            it.note = (it.note + "; " if it.note else "") + "vedit FX: " + ", ".join(fx)
         return it
 
     tracks: list[Track] = []

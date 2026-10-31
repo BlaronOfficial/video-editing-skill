@@ -156,7 +156,7 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
     dur_src = src_out - src_in
     out_dur = dur_src / clip.speed
     key = short_hash(clip.model_dump(mode="json"), head, tail, W, H, fps, s.preview, s.encoder, edit.color.model_dump(),
-                     src.path, os.path.getmtime(src.path))
+                     src.path, os.path.getmtime(src.path), src.color, src.lut)
     out = work / f"seg_{key}.mp4"
     if out.exists() and out.stat().st_size > 0:
         return out
@@ -171,7 +171,9 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
         args += ["-f", "lavfi", "-t", f"{out_dur:.4f}", "-i", "anullsrc=r=48000:cl=stereo"]
 
     iw, ih = info.display_size
-    v = [f"[0:v]setpts=(PTS-STARTPTS)/{clip.speed:.5f},fps={fps}"]
+    from .fx import clip_prefilters, fps_filter
+    pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=src_in, t=dur_src)
+    v = ["[0:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.5f}", fps_filter(clip, fps)])]
     if clip.crop:
         # Auto-reframe: moving crop window with the canvas aspect, then scale to the canvas.
         cw_expr = f"min(iw,ih*{W}/{H})"
@@ -213,6 +215,8 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
 
     a_in = "[0:a]" if has_audio else "[1:a]"
     a = [f"{a_in}asetpts=PTS-STARTPTS", "aresample=48000", "aformat=channel_layouts=stereo"]
+    if has_audio and clip.reverse:
+        a.append("areverse")
     if has_audio and abs(clip.speed - 1) > 1e-3:
         a.append(_atempo(clip.speed))
     if has_audio and abs(clip.volume - 1) > 1e-3:
@@ -228,7 +232,7 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
     graph_file = work / f"seg_{key}.fg"
     write_text(graph_file, vgraph + ";" + agraph)
     args += _filter_arg(graph_file) + ["-map", "[vout]", "-map", "[aout]", "-t", f"{out_dur:.4f}"] + s.inter_args() + [str(out)]
-    run(args)
+    run(args, cwd=work)
     return out
 
 
@@ -340,6 +344,8 @@ def _audio_graph(edit: Edit, s: RenderSettings, hooks: dict[str, list[str]], arg
     if au.voice_enhance and not s.preview:
         voice += ["equalizer=f=180:t=q:w=1:g=-1.5", "equalizer=f=3200:t=q:w=1.2:g=2.5",
                   "acompressor=threshold=0.09:ratio=3:attack=8:release=180:makeup=1.6", "deesser=i=0.35"]
+    from .audiotools import dynamics_chain
+    voice += dynamics_chain(gate_db=au.gate_db, compress=au.compress, limit_db=au.limit_db)
     voice += list(hooks.get("audio_voice", []))
     a_parts.append(f"[0:a]{','.join(voice)}[voice]")
     music_labels, sfx_labels, vo_labels = [], [], []
@@ -409,7 +415,7 @@ def _audio_graph(edit: Edit, s: RenderSettings, hooks: dict[str, list[str]], arg
     else:
         a_parts.append(f"{mix_inputs[0]}anull[mix]")
     # limit 0.84 = -1.5 dBFS ceiling, so true peaks stay at the -1.5 dBTP platform target after loudnorm.
-    master = "".join(f"{h}," for h in hooks.get("audio_master", []))
+    master = "".join(f"{h}," for h in [*dynamics_chain(widen=au.widen), *hooks.get("audio_master", [])])
     a_parts.append(f"[mix]{master}loudnorm=I={s.lufs}:TP=-1.5:LRA=11,alimiter=limit=0.84:level=false,aresample=48000[afinal]")
     return a_parts, n_in
 
@@ -442,7 +448,10 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
         n_in += 1
         iw, ih = info.display_size
         chain, _ = _fit_chain(iw, ih, W, H, clip.fit, tag=f"b{i}")
-        body = f"[{idx}:v]setpts=(PTS-STARTPTS)/{clip.speed:.4f},fps={fps},{chain}"
+        from .fx import clip_prefilters, fps_filter
+        pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=clip.src_in, t=clip.src_out - clip.src_in,
+                                                              tag=f"b{i}")
+        body = f"[{idx}:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.4f}", fps_filter(clip, fps), chain])
         if clip.zoom:
             z = clip.zoom
             D = max(clip.duration, 1e-3)
@@ -512,6 +521,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
             tail.append(f"subtitles={sub.name}:fontsdir='{fdir}'")
     tail += list(hooks.get("video_post", []))
     tail.append(f"format=yuv420p")
+    tail.append("setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv")   # frames carry the tags
     v_parts.append(f"{cur}{','.join(tail)}[vfinal]")
 
     a_parts, n_in = _audio_graph(edit, s, hooks, args, n_in)

@@ -89,6 +89,29 @@ def keyframes(path: str | Path) -> list[float]:
     return sorted(kf)
 
 
+def open_gop(path: str | Path, seconds: float = 20.0) -> bool:
+    """True when keyframes are not clean entry points (HEVC CRA/RASL, H.264 non-IDR keyframes): frames after a
+    keyframe may reference the GOP before it, so copied GOPs could glitch at a join."""
+    import re as _re
+    proc = run([ffmpeg(), "-hide_banner", "-t", f"{seconds:.1f}", "-i", str(path), "-map", "0:v:0", "-c", "copy",
+                "-bsf:v", "trace_headers", "-f", "null", "-"], check=False, timeout=600)
+    types = [int(x) for x in _re.findall(r"nal_unit_type +\d+ = (\d+)", proc.stderr or "")]
+    codec = params(path).codec
+    if codec == "hevc":
+        return any(t in (8, 9, 21) for t in types)
+    if codec == "h264":
+        idr = types.count(5)
+        kf = len([k for k in keyframes_window(path, seconds)])
+        return kf > idr
+    return False
+
+
+def keyframes_window(path: str | Path, seconds: float) -> list[float]:
+    out = run([ffprobe(), "-v", "error", "-select_streams", "v:0", "-read_intervals", f"%{seconds:.1f}", "-show_entries",
+               "packet=pts_time,flags", "-of", "csv=p=0", str(path)]).stdout or ""
+    return [float(l.split(",")[0]) for l in out.splitlines() if "K" in l.split(",")[-1] and l.split(",")[0] not in ("", "N/A")]
+
+
 def _snap(t: float, p: VideoParams) -> float:
     return round(t * p.fps) / p.fps
 
@@ -182,6 +205,16 @@ def smart_cut(segments: list[dict], out: str | Path, *, mode: str = "smart", aud
         raise VeditError("The files differ in codec, size or frame rate; smart cut needs matching files. "
                          "Use --mode accurate (re-encodes) or the normal render.")
     p0 = ps[srcs[0]]
+    notes = []
+    if mode == "smart":
+        from .footage import analyze
+        if any(analyze(s, deep=False).get("timing") == "vfr" or analyze(s).get("timing") == "vfr" for s in srcs):
+            # phone and screen recordings: frames are not on a fixed grid, so head/tail lengths cannot be exact
+            mode = "accurate"
+            notes.append("variable frame rate source: cut accurately (re-encoded) instead of a smart cut")
+        elif any(open_gop(s) for s in srcs):
+            mode = "accurate"
+            notes.append("open-GOP stream (e.g. iPhone HEVC): copied GOPs could glitch at joins, cut accurately instead")
     kfs = {s: keyframes(s) if mode != "accurate" else [] for s in srcs}
     work = Path(work_dir) if work_dir else out.parent / f".lossless_{short_hash(segments, mode)}"
     work.mkdir(parents=True, exist_ok=True)
@@ -267,7 +300,7 @@ def smart_cut(segments: list[dict], out: str | Path, *, mode: str = "smart", aud
     shutil.rmtree(work, ignore_errors=True)
     copied = sum(r["end"] - r["start"] for r in report if r["kind"] == "copy")
     total = sum(r["end"] - r["start"] for r in report)
-    return {"output": str(out), "mode": mode, "pieces": report, "frames": got, "expected_frames": expected_frames,
+    return {"output": str(out), "mode": mode, "notes": notes, "pieces": report, "frames": got, "expected_frames": expected_frames,
             "copied_share": round(copied / total, 3) if total else 0.0, "seconds": round(time.time() - t0, 1)}
 
 

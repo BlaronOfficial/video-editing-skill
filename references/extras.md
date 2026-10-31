@@ -45,4 +45,24 @@ set its `transcript`, and build captions/cuts exactly like recorded speech. Face
 VO → b-roll/Higgsfield/graphics on top → captions → music.
 
 ## Batch
-See `references/workflow.md` ("a week of reels"). Keep a shared style/brand; vary hooks and graphics.
+Edits: see `references/workflow.md` ("a week of reels"). Keep a shared style/brand; vary hooks and graphics.
+
+The same mechanical job on every file of a folder (exports for three platforms, clean-up, chapters):
+```
+vedit batch <folder> --recipe recipe.json [--jobs auto] [--dry-run]
+{"steps": [["delivery", "export", "{file}", "--preset", "reels", "--out", "{out_dir}/{stem}_reels.mp4", "--overwrite"]],
+ "outputs": ["{out_dir}/{stem}_reels.mp4"], "out_dir": "{folder}/out"}
+```
+Each step is a vedit command line (`{file} {stem} {name} {folder} {out_dir}`). Files already done with the
+same recipe are skipped (`.vedit_batch.json` in the folder); up to 4 run in parallel.
+
+## Grids, audiograms, stills
+- `vedit grid a.mp4 b.mp4 c.mp4 d.mp4 --cols 2 --out grid.mp4` (contain per cell; sound from the first or `--audio mix`).
+- Podcast clip / audio-only post: `vedit audiogram ep.m4a --image cover.png --title "Episode 12" --out ep.mp4
+  [--size 1080x1920] [--style line|bars|dots]`; `vedit waveform` is the plain version. Nothing is fetched.
+- Ken Burns on a photo: `vedit kenburns <p> photo.jpg --at 12 --duration 6 --zoom in --pan right`.
+
+## Report
+`vedit report --after final.mp4 [--before raw.mov] [--platform reels] --out report.html [--step "..."]`:
+a self-contained page with both files' facts, the delivery check and frames. Good for clients and for the
+owner's records; publish it as an Artifact only when asked.

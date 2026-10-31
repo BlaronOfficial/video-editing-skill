@@ -101,7 +101,8 @@ def _proxy_ranges(edit, sid: str, duration: float) -> list[tuple[float, float]] 
     return [(round(s, 3), round(e, 3)) for s, e in merged] or [(0.0, min(duration, FULL_PROXY_MAX))]
 
 
-def _proxy(src_path: str, out_dir: Path, sid: str, ranges: list[tuple[float, float]] | None = None) -> list[dict]:
+def _proxy(src_path: str, out_dir: Path, sid: str, ranges: list[tuple[float, float]] | None = None,
+           pre: list[str] | None = None) -> list[dict]:
     """480p H.264 chunks small enough for the 20 MiB asset cap, with exact source start times per chunk."""
     cfg = config.load()["studio"]
     info = probe(src_path)
@@ -113,7 +114,7 @@ def _proxy(src_path: str, out_dir: Path, sid: str, ranges: list[tuple[float, flo
     st = Path(src_path).stat()
     chunks = []
     for r, (r0, r1) in enumerate(ranges or [(0.0, info.duration)]):
-        key = short_hash(Path(src_path).name, st.st_size, int(st.st_mtime), size, kbps, seg, r0, r1)
+        key = short_hash(Path(src_path).name, st.st_size, int(st.st_mtime), size, kbps, seg, r0, r1, pre or [])
         listing = out_dir / f"{sid}_{key}.csv"
         if not listing.exists():
             w, h = info.display_size
@@ -124,13 +125,13 @@ def _proxy(src_path: str, out_dir: Path, sid: str, ranges: list[tuple[float, flo
             args += ["-i", src_path, "-map", "0:v:0"]
             if info.has_audio:
                 args += ["-map", "0:a:0", "-c:a", "aac", "-b:a", "96k", "-ac", "2"]
-            args += ["-vf", f"{scale},fps={fps}", "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main",
+            args += ["-vf", ",".join([*(pre or []), scale, f"fps={fps}"]), "-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main",
                      "-pix_fmt", "yuv420p", "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0",
                      "-b:v", f"{kbps}k", "-maxrate", f"{int(kbps * 1.5)}k", "-bufsize", f"{kbps * 2}k",
                      "-f", "segment", "-segment_time", str(seg), "-reset_timestamps", "1",
                      "-segment_format_options", "movflags=+faststart", "-segment_list", str(listing),
                      "-segment_list_type", "csv", str(out_dir / f"{sid}_{key}_%03d.mp4")]
-            run(args, timeout=7200)
+            run(args, timeout=7200, cwd=out_dir)
         for line in listing.read_text(encoding="utf-8").splitlines():
             name, start, end = line.rsplit(",", 2)
             f = out_dir / name
@@ -227,7 +228,9 @@ def build(p: Project, *, only: list[str] | None = None) -> dict:
             (root / "proxies").mkdir(parents=True, exist_ok=True)
             (root / "sprites").mkdir(parents=True, exist_ok=True)
             ranges = _proxy_ranges(edit, sid, src.duration or probe(src.path).duration)
-            entry["proxy"] = _proxy(src.path, root / "proxies", sid, ranges)
+            from .footage import input_chain
+            entry["proxy"] = _proxy(src.path, root / "proxies", sid, ranges,
+                                    pre=input_chain(src, lut_dir=root / "proxies"))   # HDR/Log/interlaced look right
             if ranges:
                 entry["proxy_ranges"] = ranges          # restoring words outside these needs a rebuild
             entry["sprites"] = _sprites(src.path, root / "sprites", sid)

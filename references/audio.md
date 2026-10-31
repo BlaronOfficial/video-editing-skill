@@ -71,6 +71,29 @@ Hand-placed effects still work: add an `audio` clip with `role: "sfx"` (no `sfx`
   earshot's bundled music-led launch films: for talking-head edits read its music and density notes as
   hints, not rules (`earshot profile` can build a profile from the owner's own reference videos).
 
+## External recorders, second cameras, drift
+```
+vedit audio sync <reference> <other> [--drift]       # offset at the start (+ clock drift in ppm)
+vedit audio replace <video> <recorder.wav> --drift   # the recorder's sound on the video, aligned, picture copied
+```
+Offsets are measured on several 30 s windows across the overlap (some passages, like music beds or silence,
+correlate badly); with `--drift` a line through the confident windows gives the clock difference, and the
+recorder is resampled to the camera's clock (no time-stretch artefacts). Measured: 200 ppm of injected drift
+found within 12 ppm, start offset within 1 ms, a replaced track lines up at both ends. Confidence under 3:
+the two files probably did not record the same moment; look and listen. Multicam angles: `references/watching.md`.
+
+## Voice processing and dynamics
+The render's voice chain (high-pass, denoise, presence EQ, compressor, de-esser) is on by default. More in
+edit.json `output.audio`: `gate_db` (-45 removes room noise between words), `compress` ("-20:4"),
+`limit_db`, `widen` (0..1, real stereo only). On a file: `vedit audio clean <f> --voice light|medium|strong`,
+`vedit audio dynamics <f> --gate -45 --compress -20:4 --limit -1`, `vedit audio widen|downmix|extract <f>`.
+5.1 sources are downmixed to stereo automatically in renders.
+
+## Cutting pauses without cutting sentences
+`vedit plan auto <p> --speech-aware` cuts a pause only after a sentence ends (or when it is very long), so a
+breath in the middle of a thought stays: the natural default for interviews and explainers. Plain
+`plan auto` cuts every pause over `--max-pause` (punchy shorts).
+
 ## Voiceover
 Recorded VO: add as a source with `--origin vo`, transcribe it, cut it like A-roll (main track can be an
 audio source with b-roll/graphics above), or place it as `role: "vo"`.

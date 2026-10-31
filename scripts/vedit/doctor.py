@@ -37,6 +37,12 @@ def check() -> dict:
         add("ffmpeg libass (captions)", " subtitles " in filters, "", "Install a full FFmpeg build (gyan.dev 'full').")
         add("ffmpeg xfade/sidechaincompress", " xfade " in filters and "sidechaincompress" in filters, "",
             "Update FFmpeg to 5.0+.")
+        optional = {"zscale": "HDR to SDR", "vidstabdetect": "stabilize", "minterpolate": "smooth slow motion",
+                    "nlmeans": "strong denoise", "v360": "360 reframe", "lut3d": "LUTs"}
+        missing = [f"{k} ({v})" for k, v in optional.items() if f" {k} " not in filters]
+        add("ffmpeg footage/FX filters", not missing, "all present" if not missing else "missing: " + ", ".join(missing),
+            "Install a full FFmpeg build (gyan.dev 'full'); the missing features fail with a clear error until then.",
+            required=False)
     add("node", bool(which("node")), _version(["node", "--version"]) or "", "Install Node.js 20+ from nodejs.org")
     add("mg renderer deps", (mg_dir() / "renderer" / "node_modules" / "puppeteer-core").exists(), "",
         "Run `vedit setup renderer`")
