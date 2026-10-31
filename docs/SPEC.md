@@ -195,3 +195,45 @@ Verified on the owner's machine:
 Waiting on the owner: ears download (~1.3 GB), the logged-in browser probe + one Gemini image through the
 inbox, Canva background removal on one image. Openverse's image API returned 504 for every client during
 testing (their outage; audio search worked earlier the same day).
+
+### Phase 3 status (2026-10-31): hand-offs
+
+Built: `exports/` (one neutral hand-off timeline from edit.json: tracks without overlaps, zoom and
+reframe paths as scale/position keyframes, loops laid end to end, markers for what a timeline cannot
+hold), `fcpxml.py` (native FCPXML 1.10 + reader), `otio.py` + `otio_bridge.py` (OpenTimelineIO in an
+isolated venv: .otio, FCP7 XML for Premiere, CMX EDL, Kdenlive; reads any of them back), `mlt.py`
+(native Shotcut MLT + reader), `package.py` (ProRes 4444 graphics, styled caption/title layers with real
+alpha by black/white difference matting, stems from the renderer's own mix chain, the grade as a 33-point
+.cube through a Hald CLUT, SRT, README per editor, handoff.json), `diff.py` (learn from re-exports, median
+head/tail trims, `--apply-cuts`), `resolve/` (Studio live import through the scripting API in a child
+process, add-only with read-back; screen import for the free edition), `llc.py` (.llc with a JSON5 reader,
+LosslessCut HTTP API on our own config dir), `lossless.py` (native smart cut: re-encoded head/tail, whole
+GOPs copied via the segment muxer, exact piece durations, sample-exact audio; keyframe and accurate modes;
+merge, split, chapters, selects; `render --lossless`), `cutlist.py` (csv, YouTube chapters, llc, srt and
+the timeline formats, both ways), `Marker` in edit.json (anchored, chapters/to-dos), Execute writes the
+hand-offs picked at intake (`vedit handoffs`).
+
+Verified on the owner's machine (`tests/test_phase3.py --full --apps`: 38/38; test_v2 22/22, test_phase2
+22/22 offline):
+- FCPXML valid against Apple's FCPXML 1.10 DTD; storyline and connected clips read back to the frame.
+- OTIO, Premiere XML, EDL and Kdenlive read back through OpenTimelineIO with the same cut.
+- Model geometry vs the vedit render: SSIM 0.97. LUT vs the FFmpeg grade: SSIM 0.996, 1.5/255 mean diff.
+- Stems sample-identical in length; styled caption layer composites exactly like the burned captions.
+- Smart cut on H.264 with B-frames and a 3 s GOP: 397/397 frames, 45 % copied bit for bit, every frame
+  SSIM >= 0.98 against the source (mean 0.997), even timestamps across joins.
+- Shotcut 26.9.27's melt renders our MLT like vedit (framing, zoom path, graphics, LUT; SSIM 0.81-0.95
+  above the captions between two different renderers). The first run caught a real bug (producer filter
+  ranges), fixed.
+- LosslessCut 3.70.2 opened our .llc, exported both named segments through its HTTP API, and its own
+  re-saved .llc (JSON5) read back.
+- Not testable here: DaVinci Resolve (not installed) and Premiere/Final Cut imports; marked untested.
+
+### Next: ffmpeg-skill port (agreed 2026-10-31), then phase 4
+
+Hybrid port of kajisho5/ffmpeg-skill (MIT): HDR/Dolby Vision to SDR, Log detection, VFR guard and device
+notes in probe/render; delivery presets, size targets, compliance checks, SSIM compare, repair in
+QA/export; clean-up and time FX (stabilize, denoise, deinterlace, redact/delogo, straighten, cropdetect,
+360 reframe, speed ramps, freeze, reverse, loop, smooth slow motion); audio (drift-corrected sync, gate,
+compressor, limiter, widen, 5.1 downmix, speech-aware silence, filler removal); extras (grid,
+audiogram/waveform, Ken Burns stills, batch with caching, HTML report); its working rules (fixed end-of-job
+report, never overwrite originals, dry-run plans). Its gotchas and device notes go into references.

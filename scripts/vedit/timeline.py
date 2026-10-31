@@ -284,6 +284,26 @@ class CustomFX(_Model):
     label: str = ""
 
 
+class Marker(_Model):
+    """A note on the timeline: carried into hand-offs (NLE markers, chapters, to-dos) and the Studio."""
+    id: str
+    t: float                                 # timeline seconds (follows `anchor` when set)
+    duration: float = 0.0
+    name: str = ""
+    note: str = ""
+    kind: Literal["note", "chapter", "todo"] = "note"
+    color: str = "blue"                      # blue | red | green | yellow | purple | cyan | orange | pink
+    anchor: Optional[Anchor] = None
+
+    @property
+    def start(self) -> float:                # anchors write `start`; markers read `t`
+        return self.t
+
+    @start.setter
+    def start(self, value: float) -> None:
+        self.t = value
+
+
 class ColorGrade(_Model):
     preset: Optional[str] = None             # renderer grade preset (see render.GRADES)
     lut: Optional[str] = None                # .cube file
@@ -332,6 +352,7 @@ class Edit(_Model):
     capcut: CapCutSettings = Field(default_factory=CapCutSettings)
     output: Output = Field(default_factory=Output)
     custom_fx: list[CustomFX] = Field(default_factory=list)
+    markers: list[Marker] = Field(default_factory=list)
     knobs: dict[str, Any] = Field(default_factory=dict)       # Studio tuning values (presets/knobs.json)
     revision: int = 0                                         # bumped on every save (Studio sync)
     notes: str = ""
@@ -366,7 +387,7 @@ class Edit(_Model):
     def _resolve_anchors(self) -> None:
         if not self.main:
             return
-        for item in [*self.overlays, *self.texts, *self.audio, *self.effects, *self.custom_fx]:
+        for item in [*self.overlays, *self.texts, *self.audio, *self.effects, *self.custom_fx, *self.markers]:
             a = getattr(item, "anchor", None)
             if a is None:
                 continue
@@ -374,11 +395,11 @@ class Edit(_Model):
             if at is None and a.policy == "nearest":
                 at = self._nearest_kept(a.source, a.t)
             if at is None:
-                if a.policy == "drop":
+                if a.policy == "drop" and hasattr(item, "enabled"):
                     item.enabled = False
                 continue
             item.start = round(max(0.0, at + a.offset), 4)
-            if a.policy == "drop":
+            if a.policy == "drop" and hasattr(item, "enabled"):
                 item.enabled = True
 
     def _nearest_kept(self, source_id: str, t: float) -> Optional[float]:

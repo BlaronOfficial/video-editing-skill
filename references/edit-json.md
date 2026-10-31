@@ -81,7 +81,7 @@ golden, matte, punchy), `lut` (.cube path), `capcut_filter` (name or alias), `in
 
 **capcut** - `project_name`, `pro_allowed`, `include_captions`, `overlay_mode` auto|alpha|chroma|flatten.
 
-**anchor** (on overlays, texts, audio, effects, custom_fx) - `{source, t, offset, policy}`: pins the item
+**anchor** (on overlays, texts, audio, effects, custom_fx, markers) - `{source, t, offset, policy}`: pins the item
 to a moment inside a source (usually a word's start). Its `start` is recomputed through the cut, so it
 follows its word when clips are trimmed, removed or re-paced. `offset` shifts it on the timeline;
 `policy` decides what happens when the moment is cut out: `nearest` (default, snap to the closest kept
@@ -92,6 +92,11 @@ point), `drop` (disable it), `keep` (leave `start` alone). Get anchors with `ved
 **custom_fx[]** - code you write for this edit: `{id, kind python|ffmpeg|html, file, hook, filter,
 params, inputs, output overlay|audio|source, start, duration, anchor, transform, fit, layer, volume}`.
 See `references/extending.md`.
+
+**markers[]** - notes on the timeline that travel into every hand-off: `{id, t, duration, name, note,
+kind note|chapter|todo, color, anchor}`. Chapters become NLE chapter markers, YouTube chapter lines and
+file chapters; `vedit marker add <p> --t 12.4 --name ... [--kind chapter]` anchors them to the words under
+that moment so they follow re-cuts. See `references/handoffs.md`.
 
 **knobs** - Studio tuning values applied at bake time without touching your decisions: `pace` 0-1,
 `transitions`, `zoom_strength`, `grade_preset`, `grade_intensity`, `captions_on`, `caption_style`,

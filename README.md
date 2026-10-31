@@ -29,8 +29,10 @@ asked for.
 - B-roll, music with automatic ducking, colour grades, reframes, long-video → shorts, thumbnails, post
   copy, voiceover, batch mode.
 - Learns your taste from Studio decisions, chat feedback, the routes you keep and your edits.
-- **Optional hand-offs**: an editable CapCut project today; DaVinci Resolve, Premiere/Final Cut XML and
-  LosslessCut are coming in the next phases.
+- **Optional hand-offs**: an editable CapCut project; DaVinci Resolve (free import package, or live in
+  Studio), Premiere Pro, Final Cut Pro, Kdenlive, Shotcut, OpenTimelineIO and EDL timelines with ProRes
+  graphics, stems and the grade as a LUT; LosslessCut projects; edits made there come back and teach vedit.
+- Lossless smart cut: frame-accurate trims that re-encode only a few frames around each cut.
 - Optional add-ons: Higgsfield, ElevenLabs, Pexels/Pixabay, Blender, earshot and more (`vedit doctor`
   lists them with cost and licence).
 

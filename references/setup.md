@@ -5,7 +5,8 @@ The core is free and standalone: Windows 10/11 (macOS paths prepared, untested),
 libass), Python via `uv`, Node.js 20+, Google Chrome or Edge. That is all `vedit doctor` needs for READY.
 
 Optional add-ons (`vedit doctor` lists each with cost, licence, size and how to install): CapCut desktop
-(9.x verified), DaVinci Resolve (free or Studio), LosslessCut, Blender, earshot sound kits and ears,
+(9.x verified), DaVinci Resolve (free or Studio), LosslessCut, Blender, OpenTimelineIO (~10 MB, installs on
+first use for Premiere/OTIO/EDL/Kdenlive hand-offs: `vedit setup otio`), earshot sound kits and ears,
 claude-real-video (watching, speakers, link fetch), Remotion, ElevenLabs, Higgsfield, Pexels/Pixabay/Gemini
 API keys; plus whatever the Claude session brings (Claude in Chrome, Canva or Google Drive connectors,
 computer use, Windows-MCP).

@@ -164,6 +164,11 @@ def _crv() -> tuple[bool, str]:
     return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup crv` (~100 MB; native fallback without it)")
 
 
+def _otio() -> tuple[bool, str]:
+    py = tool_python("otio")
+    return (True, f"tool venv {py.parent.parent}") if py else (False, "installs on first use (~10 MB): `vedit setup otio`")
+
+
 def _earshot_ears() -> tuple[bool, str]:
     hub = cache_dir() / "earshot" / "hf"
     ok = hub.is_dir() and any(hub.glob("models--*"))
@@ -174,7 +179,7 @@ ADDONS: list[Addon] = [
     Addon("capcut", "CapCut desktop", "app", "freemium", "editable CapCut project hand-off; CapCut-only effects",
           "proprietary (Pro resources paid)", None, "Install CapCut, make one empty project, `vedit capcut calibrate`",
           _capcut),
-    Addon("resolve", "DaVinci Resolve", "app", "free", "FCPXML/OTIO import package; screen control; learn from edits",
+    Addon("resolve", "DaVinci Resolve", "app", "free", "import package (FCPXML + graphics + LUT + stems); screen import; learn from re-exports",
           "proprietary (free edition)", 3000, "blackmagicdesign.com -> DaVinci Resolve (free)", _resolve),
     Addon("resolve_studio", "DaVinci Resolve Studio", "app", "paid", "live timeline/grade/render control, Fusion, MCP",
           "proprietary ($295 one-time)", None, "Studio licence; Preferences > System > General > External scripting: Local",
@@ -190,6 +195,8 @@ ADDONS: list[Addon] = [
           "MIT code; CLAP Apache-2.0, AST BSD-3", 1300, "`vedit setup earshot --ears`", _earshot_ears),
     Addon("crv", "claude-real-video", "tool", "free", "watch footage (scene frames, dedup, grids), speakers, link fetch",
           "MIT (yt-dlp Unlicense, sherpa-onnx Apache-2.0)", 100, "`vedit setup crv`", _crv),
+    Addon("otio", "OpenTimelineIO + adapters", "tool", "free", "Premiere XML, OTIO, EDL, Kdenlive hand-offs; reading "
+          "re-exports back", "Apache-2.0 (Kdenlive adapter MIT)", 10, "`vedit setup otio`", _otio),
     Addon("remotion", "Remotion", "engine", "freemium", "React motion graphics",
           "Remotion licence (free for individuals / teams up to 3)", 150, "auto on first use", _remotion),
     Addon("elevenlabs", "ElevenLabs", "service", "paid", "Scribe transcription, premium TTS, voice clone",

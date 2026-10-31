@@ -53,6 +53,9 @@ def cmd_setup(a):
     if what == "crv":
         from . import watch
         out["crv"] = watch.setup()
+    if what == "otio":
+        from .exports import otio
+        out["otio"] = otio.setup()
     print_json(out)
 
 
@@ -291,6 +294,13 @@ def cmd_render(a):
         raise VeditError(f"Overlays not rendered yet: {missing}. Run `vedit mg render {a.path}` first.")
     out = Path(a.out) if a.out else p.sub("render") / ("preview.mp4" if a.preview else f"{e.name}.mp4")
     t0 = time.time()
+    if a.lossless:
+        from .lossless import render_edit
+        res = render_edit(e, out, mode=a.mode, captions=not a.no_captions)
+        res["seconds"] = round(time.time() - t0, 1)
+        p.log(f"rendered losslessly ({a.mode}) -> {out.name}")
+        print_json(res)
+        return
     res = render(e, out, preview=a.preview, work_dir=p.sub("render") / "work", burn_captions=not a.no_captions,
                  project_root=p.root)
     res["seconds"] = round(time.time() - t0, 1)
@@ -587,7 +597,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sp.add_parser("doctor", help="check the environment"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_doctor)
     s = sp.add_parser("setup", help="install fonts, renderer deps, whisper model")
-    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts", "earshot", "crv"])
+    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts", "earshot", "crv", "otio"])
     s.add_argument("--force", action="store_true"); s.add_argument("--whisper", action="store_true"); s.add_argument("--model")
     s.add_argument("--ears", action="store_true", help="earshot: also torch CPU + listening models (~1.3 GB)")
     s.set_defaults(fn=cmd_setup)
@@ -634,6 +644,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("render"); s.add_argument("path"); s.add_argument("--preview", action="store_true"); s.add_argument("--out")
     s.add_argument("--no-captions", action="store_true")
     s.add_argument("--force", action="store_true", help="final render without an approved plan (owner asked)")
+    s.add_argument("--lossless", action="store_true", help="cuts-only edits: smart cut, no re-encode outside the cuts")
+    s.add_argument("--mode", default="smart", choices=["smart", "keyframe", "accurate"])
     s.set_defaults(fn=cmd_render)
     s = sp.add_parser("qa"); s.add_argument("path"); s.add_argument("--render")
     s.add_argument("--no-ears", action="store_true", help="skip earshot's ears (minutes on CPU) for a quick check")
@@ -694,10 +706,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sp.add_parser("mcp", help="run the MCP server (stdio)"); s.set_defaults(fn=cmd_mcp)
 
     # v2 command groups live next to their modules
-    from . import (capabilities, custom, extend, extensions, knobs, learn, models, modes, routes, sound, studio,
+    from . import (capabilities, custom, extend, extensions, handoff, knobs, learn, models, modes, routes, sound, studio,
                    studio_local, suggest, watch, writing, inbox, sources)
     for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend, sound,
-                watch, writing, inbox, sources):
+                watch, writing, inbox, sources, handoff):
         mod.register_cli(sp)
     extensions.register_cli(sp)
     return ap

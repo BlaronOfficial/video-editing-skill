@@ -68,8 +68,8 @@ to run, so work outside Claude Code's plan mode.)
 | 5. Draft | Cut, captions, graphics pinned to words, b-roll and assets (libraries, browser, web AI), sound kit on cues, look. Route every need; write custom code when templates fall short | `vedit plan apply` · `vedit words --find` · `vedit route plan <need>` · `vedit sources` · `vedit inbox pull` · `vedit sound cues/place` |
 | 6. Critique | Watch and listen to a preview against the excellence checklist; check your own words; fix; turn real judgement calls into suggestion cards | `vedit render --preview` · `vedit watch --render` · `vedit qa` · `vedit text check` · `vedit suggest add` |
 | 7. Studio | Build previews, publish/sync the Studio, answer "Send to Claude" notes by applying the owner's ops | `vedit studio build/docs/apply` · `references/studio.md` |
-| 8. Execute | After approval: graphics, custom FX, final render, QA (look at the sheets), agreed hand-offs, thumbnail, post copy | `vedit execute` · `vedit qa` · `vedit capcut build` |
-| 9. Learn | Turn feedback into rules, log which routes worked, learn from the owner's NLE edits, index the footage for later | `vedit learn note` · `vedit route log` · `vedit capcut diff --learn` · `vedit memory index` |
+| 8. Execute | After approval: graphics, custom FX, final render, QA (look at the sheets), agreed hand-offs (Execute writes the file packages; CapCut and Resolve Studio import are yours to run), thumbnail, post copy | `vedit execute` · `vedit qa` · `vedit handoff make` · `vedit capcut build` · `vedit resolve import` |
+| 9. Learn | Turn feedback into rules, log which routes worked, learn from the owner's edits in CapCut or any NLE (and bring their trims back), index the footage for later | `vedit learn note` · `vedit route log` · `vedit capcut diff --learn` · `vedit handoff diff --learn` · `vedit memory index` |
 
 Custom compositions written for the specific video (HTML/GSAP, SVG, Canvas, Three.js, shaders) and custom
 FX are how edits go from good to excellent. Templates are a starting point, not a ceiling.
@@ -92,6 +92,9 @@ FX are how edits go from good to excellent. Templates are a starting point, not 
 | Music, voice, ducking, beats, sound kits and cues, listening checks | `references/audio.md` |
 | Watching footage, speakers, multicam, footage memory, links | `references/watching.md` |
 | Styles, brand kits, cloning a creator | `references/styles.md` |
+| Hand-offs to Resolve, Premiere, Final Cut, Kdenlive, Shotcut, OTIO/EDL; packages, round trips, smart cut, cut lists, markers | `references/handoffs.md` |
+| DaVinci Resolve (free package, Studio live import, screen import) | `references/resolve.md` |
+| LosslessCut (.llc round trip, app API) | `references/losslesscut.md` |
 | CapCut hand-off (optional) | `references/capcut.md` · `references/screen-control.md` |
 | Higgsfield generation (optional, credits) | `references/higgsfield.md` |
 | Assets and ideas from the internet: free libraries, browser, Pinterest, licences | `references/sourcing.md` |

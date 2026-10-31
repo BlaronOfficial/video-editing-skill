@@ -327,6 +327,93 @@ def _effect_filters(edit: Edit, s: RenderSettings) -> list[str]:
     return out
 
 
+def _audio_graph(edit: Edit, s: RenderSettings, hooks: dict[str, list[str]], args: list[str], n_in: int, *,
+                 stems: bool = False) -> tuple[list[str], int]:
+    """The mix: voice chain on the main track's sound ([0:a]), music ducked under speech with stop-downs,
+    effects, then the master (loudness to target, -1.5 dBTP ceiling) -> [afinal].
+    stems=True ends before the master with [stem_dialogue] [stem_music] [stem_effects] (pre-master levels)."""
+    a_parts: list[str] = []
+    au = edit.output.audio
+    voice = ["highpass=f=70"]
+    if au.denoise and not s.preview:
+        voice.append("afftdn=nf=-28:tn=1")
+    if au.voice_enhance and not s.preview:
+        voice += ["equalizer=f=180:t=q:w=1:g=-1.5", "equalizer=f=3200:t=q:w=1.2:g=2.5",
+                  "acompressor=threshold=0.09:ratio=3:attack=8:release=180:makeup=1.6", "deesser=i=0.35"]
+    voice += list(hooks.get("audio_voice", []))
+    a_parts.append(f"[0:a]{','.join(voice)}[voice]")
+    music_labels, sfx_labels, vo_labels = [], [], []
+    for i, clip in enumerate(edit.audio):
+        src = edit.sources[clip.source]
+        info = probe(src.path)
+        src_out = clip.src_out if clip.src_out is not None else info.duration
+        total = edit.duration
+        if clip.loop:
+            args += ["-stream_loop", "-1"]
+        args += ["-ss", f"{clip.src_in:.3f}", "-i", src.path]
+        idx = n_in
+        n_in += 1
+        length = (min(src_out - clip.src_in, max(0.1, total - clip.start)) if clip.role in ("music", "ambience") and not clip.loop
+                  else (max(0.1, total - clip.start) if clip.loop else src_out - clip.src_in))
+        chain = [f"[{idx}:a]atrim=0:{length:.3f}", "asetpts=PTS-STARTPTS", "aresample=48000",
+                 "aformat=channel_layouts=stereo", f"volume={clip.volume:.3f}"]
+        if clip.fade_in:
+            chain.append(f"afade=t=in:st=0:d={clip.fade_in:.3f}")
+        if clip.fade_out:
+            chain.append(f"afade=t=out:st={max(0, length - clip.fade_out):.3f}:d={clip.fade_out:.3f}")
+        delay = int(round(clip.start * 1000))
+        chain.append(f"adelay={delay}|{delay}")
+        label = f"au{i}"
+        a_parts.append(",".join(chain) + f"[{label}]")
+        (music_labels if clip.ducks else vo_labels if clip.role == "vo" else sfx_labels).append(label)
+
+    speech = ["[voice]"] + [f"[{l}]" for l in vo_labels]
+    if len(speech) > 1:
+        a_parts.append("".join(speech) + f"amix=inputs={len(speech)}:normalize=0[speech]")
+    else:
+        a_parts.append("[voice]anull[speech]")
+    mix_inputs = []
+    if music_labels:
+        a_parts.append("[speech]asplit=2[sp_mix][sp_key]")
+        bed = "".join(f"[{l}]" for l in music_labels)
+        from .sound import dip_expr, dips
+        expr = dip_expr(dips(edit))
+        pre = "[bed_pre]" if expr else "[bed]"
+        if len(music_labels) > 1:
+            a_parts.append(f"{bed}amix=inputs={len(music_labels)}:normalize=0{pre}")
+        else:
+            a_parts.append(f"{bed}anull{pre}")
+        if expr:       # music stop-downs: the bed eases down before a big hit and comes back on it
+            a_parts.append(f"[bed_pre]volume=eval=frame:volume='{expr}'[bed]")
+        ratio = max(2.0, min(20.0, abs(au.duck_db) / 1.5))
+        a_parts.append(f"[bed][sp_key]sidechaincompress=threshold=0.025:ratio={ratio:.1f}:attack=25:release=450:makeup=1[ducked]")
+        mix_inputs += ["[sp_mix]", "[ducked]"]
+    else:
+        mix_inputs.append("[speech]")
+    mix_inputs += [f"[{l}]" for l in sfx_labels]
+    if stems:
+        dur = f"{edit.duration:.4f}"
+        n = int(round(edit.duration * 48000))
+        silent = f"aevalsrc=0|0:c=stereo:s=48000:d={dur}"
+        fit = f"asetpts=N/SR/TB,apad=whole_len={n},atrim=end_sample={n}"       # sample-exact, equal lengths
+        a_parts.append(f"{mix_inputs[0]}{fit}[stem_dialogue]")
+        a_parts.append(f"{mix_inputs[1]}{fit}[stem_music]" if music_labels else f"{silent}[stem_music]")
+        if sfx_labels:
+            a_parts.append("".join(f"[{l}]" for l in sfx_labels)
+                           + f"amix=inputs={len(sfx_labels)}:normalize=0:duration=longest,{fit}[stem_effects]")
+        else:
+            a_parts.append(f"{silent}[stem_effects]")
+        return a_parts, n_in
+    if len(mix_inputs) > 1:
+        a_parts.append("".join(mix_inputs) + f"amix=inputs={len(mix_inputs)}:normalize=0:duration=first[mix]")
+    else:
+        a_parts.append(f"{mix_inputs[0]}anull[mix]")
+    # limit 0.84 = -1.5 dBFS ceiling, so true peaks stay at the -1.5 dBTP platform target after loudnorm.
+    master = "".join(f"{h}," for h in hooks.get("audio_master", []))
+    a_parts.append(f"[mix]{master}loudnorm=I={s.lufs}:TP=-1.5:LRA=11,alimiter=limit=0.84:level=false,aresample=48000[afinal]")
+    return a_parts, n_in
+
+
 def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, ass_path: Path | None,
             titles_path: Path | None = None, hooks: dict[str, list[str]] | None = None) -> Path:
     W, H, fps = s.W, s.H, s.fps
@@ -427,73 +514,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     tail.append(f"format=yuv420p")
     v_parts.append(f"{cur}{','.join(tail)}[vfinal]")
 
-    # ---------------- audio
-    au = edit.output.audio
-    voice = ["highpass=f=70"]
-    if au.denoise and not s.preview:
-        voice.append("afftdn=nf=-28:tn=1")
-    if au.voice_enhance and not s.preview:
-        voice += ["equalizer=f=180:t=q:w=1:g=-1.5", "equalizer=f=3200:t=q:w=1.2:g=2.5",
-                  "acompressor=threshold=0.09:ratio=3:attack=8:release=180:makeup=1.6", "deesser=i=0.35"]
-    voice += list(hooks.get("audio_voice", []))
-    a_parts.append(f"[0:a]{','.join(voice)}[voice]")
-    music_labels, sfx_labels, vo_labels = [], [], []
-    for i, clip in enumerate(edit.audio):
-        src = edit.sources[clip.source]
-        info = probe(src.path)
-        src_out = clip.src_out if clip.src_out is not None else info.duration
-        total = edit.duration
-        if clip.loop:
-            args += ["-stream_loop", "-1"]
-        args += ["-ss", f"{clip.src_in:.3f}", "-i", src.path]
-        idx = n_in
-        n_in += 1
-        length = (min(src_out - clip.src_in, max(0.1, total - clip.start)) if clip.role in ("music", "ambience") and not clip.loop
-                  else (max(0.1, total - clip.start) if clip.loop else src_out - clip.src_in))
-        chain = [f"[{idx}:a]atrim=0:{length:.3f}", "asetpts=PTS-STARTPTS", "aresample=48000",
-                 "aformat=channel_layouts=stereo", f"volume={clip.volume:.3f}"]
-        if clip.fade_in:
-            chain.append(f"afade=t=in:st=0:d={clip.fade_in:.3f}")
-        if clip.fade_out:
-            chain.append(f"afade=t=out:st={max(0, length - clip.fade_out):.3f}:d={clip.fade_out:.3f}")
-        delay = int(round(clip.start * 1000))
-        chain.append(f"adelay={delay}|{delay}")
-        label = f"au{i}"
-        a_parts.append(",".join(chain) + f"[{label}]")
-        (music_labels if clip.ducks else vo_labels if clip.role == "vo" else sfx_labels).append(label)
-
-    speech = ["[voice]"] + [f"[{l}]" for l in vo_labels]
-    if len(speech) > 1:
-        a_parts.append("".join(speech) + f"amix=inputs={len(speech)}:normalize=0[speech]")
-    else:
-        a_parts.append("[voice]anull[speech]")
-    mix_inputs = []
-    if music_labels:
-        a_parts.append("[speech]asplit=2[sp_mix][sp_key]")
-        bed = "".join(f"[{l}]" for l in music_labels)
-        from .sound import dip_expr, dips
-        expr = dip_expr(dips(edit))
-        pre = "[bed_pre]" if expr else "[bed]"
-        if len(music_labels) > 1:
-            a_parts.append(f"{bed}amix=inputs={len(music_labels)}:normalize=0{pre}")
-        else:
-            a_parts.append(f"{bed}anull{pre}")
-        if expr:       # music stop-downs: the bed eases down before a big hit and comes back on it
-            a_parts.append(f"[bed_pre]volume=eval=frame:volume='{expr}'[bed]")
-        ratio = max(2.0, min(20.0, abs(au.duck_db) / 1.5))
-        a_parts.append(f"[bed][sp_key]sidechaincompress=threshold=0.025:ratio={ratio:.1f}:attack=25:release=450:makeup=1[ducked]")
-        mix_inputs += ["[sp_mix]", "[ducked]"]
-    else:
-        mix_inputs.append("[speech]")
-    mix_inputs += [f"[{l}]" for l in sfx_labels]
-    if len(mix_inputs) > 1:
-        a_parts.append("".join(mix_inputs) + f"amix=inputs={len(mix_inputs)}:normalize=0:duration=first[mix]")
-    else:
-        a_parts.append(f"{mix_inputs[0]}anull[mix]")
-    # limit 0.84 = -1.5 dBFS ceiling, so true peaks stay at the -1.5 dBTP platform target after loudnorm.
-    master = "".join(f"{h}," for h in hooks.get("audio_master", []))
-    a_parts.append(f"[mix]{master}loudnorm=I={s.lufs}:TP=-1.5:LRA=11,alimiter=limit=0.84:level=false,aresample=48000[afinal]")
-
+    a_parts, n_in = _audio_graph(edit, s, hooks, args, n_in)
     graph_file = work / "compose.fg"
     write_text(graph_file, ";\n".join(v_parts + a_parts))
     enc = video_encoder_args(s.encoder, crf=s.crf, preset=s.preset)
@@ -504,6 +525,35 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
 
 
 # ------------------------------------------------------------------ entry point
+
+def render_stems(edit: Edit, out_dir: str | Path, *, work_dir: str | Path, project_root: str | Path | None = None) -> dict:
+    """Dialogue / music / effects stems (48 kHz 24-bit WAV, full length, pre-master) for NLE hand-offs.
+    They sum to the vedit mix before loudness normalisation; the music stem is already ducked."""
+    from .knobs import bake
+    edit = bake(edit.layout()).active()
+    hooks: dict[str, list[str]] = {}
+    if edit.custom_fx and project_root:
+        from .custom import materialize
+        edit, hooks = materialize(edit, Path(project_root))
+    s = RenderSettings(edit, preview=False)
+    work = Path(work_dir)
+    work.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    aroll = assemble_main(edit, s, work)
+    args = [ffmpeg(), "-y", "-v", "error", "-nostdin", "-i", str(aroll)]
+    a_parts, _ = _audio_graph(edit, s, hooks, args, 1, stems=True)
+    graph_file = work / "stems.fg"
+    write_text(graph_file, ";\n".join(a_parts))
+    outs = {}
+    args += ["-/filter_complex", graph_file.name]
+    for name in ("dialogue", "music", "effects"):
+        f = out_dir / f"{name}.wav"
+        args += ["-map", f"[stem_{name}]", "-c:a", "pcm_s24le", "-ar", "48000", str(f.resolve())]
+        outs[name] = str(f.resolve())
+    run(args, cwd=work, capture=True)
+    return outs
+
 
 def render(edit: Edit, out: str | Path, *, preview: bool = False, work_dir: str | Path | None = None,
            burn_captions: bool = True, project_root: str | Path | None = None) -> dict:

@@ -97,6 +97,9 @@ def mark_executed(proj: Project, note: str = "") -> dict:
 # ------------------------------------------------------------------ CLI
 
 def register_cli(sp) -> None:
+    s = sp.add_parser("handoffs", help="which hand-offs Execute writes for this project (picked at intake)")
+    s.add_argument("path"); s.add_argument("targets", nargs="*", help="resolve premiere fcp kdenlive shotcut otio edl nle llc capcut | none")
+    s.set_defaults(fn=_cmd_handoffs)
     s = sp.add_parser("mode", help="show or set the project's working mode (plan | step | auto)")
     s.add_argument("path"); s.add_argument("mode", nargs="?", choices=MODES)
     s.set_defaults(fn=_cmd_mode)
@@ -114,6 +117,17 @@ def _cmd_mode(a) -> None:
     from .util import print_json
     p = find(a.path)
     print_json(set_mode(p, a.mode) if a.mode else state(p))
+
+
+def _cmd_handoffs(a) -> None:
+    from .project import find
+    from .util import print_json
+    p = find(a.path)
+    if a.targets:
+        wf = state(p)
+        wf["handoffs"] = [] if a.targets == ["none"] else a.targets
+        _save(p, wf, f"hand-offs -> {', '.join(a.targets)}")
+    print_json({"handoffs": chosen_handoffs(p)})
 
 
 def _cmd_workflow(a) -> None:
@@ -155,6 +169,39 @@ def _cmd_execute(a) -> None:
     if not a.no_qa:
         target = e.output.audio.target_lufs or config.load()["render"]["target_lufs"]
         out["qa"] = check(e, res["output"], p.sub("qa"), target_lufs=target)
+    out["handoffs"] = run_handoffs(p)
     mark_executed(p, res["output"])
     p.log(f"executed -> {res['output']}")
     print_json(out)
+
+
+def chosen_handoffs(proj: Project) -> list[str]:
+    """Hand-offs picked at intake (project.json workflow.handoffs) or in config (outputs.handoffs as a list)."""
+    wf = state(proj)
+    picked = wf.get("handoffs")
+    if picked is None:
+        cfg = config.load().get("outputs", {}).get("handoffs", "ask")
+        picked = cfg if isinstance(cfg, list) else []
+    return [x for x in picked if x and x != "none"]
+
+
+def run_handoffs(proj: Project) -> dict:
+    """Execute's hand-off step. CapCut and Resolve Studio live import stay Claude-driven (they touch the owner's
+    apps); files are written here."""
+    from .exports.package import TARGETS, build
+    done: dict = {}
+    for target in chosen_handoffs(proj):
+        t = {"nle": "nle", "premiere": "premiere", "fcp": "fcp", "resolve": "resolve", "kdenlive": "kdenlive",
+             "shotcut": "shotcut", "otio": "otio", "edl": "edl"}.get(target)
+        try:
+            if t in TARGETS:
+                r = build(proj, t)
+                done[target] = {"dir": r["dir"], "warnings": r["warnings"]}
+            elif target in ("llc", "losslesscut"):
+                from .llc import from_edit
+                done[target] = from_edit(proj.edit(), proj.sub("handoff") / "losslesscut", footage_dir=proj.footage_dir)
+            else:
+                done[target] = {"todo": f"run by Claude: {'vedit capcut build' if target == 'capcut' else target}"}
+        except Exception as exc:             # one failing hand-off must not lose the render
+            done[target] = {"error": str(exc)}
+    return done

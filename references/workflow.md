@@ -13,8 +13,9 @@ Ask in one AskUserQuestion call (skip what the user already said):
 - **Language** if not obvious: en, bn, mixed (pass `--language bn|en`; omit for auto).
 - **Style**: a preset (`vedit style list`), a brand kit (`vedit brand list`), a cloned creator, or "your call".
 - **Mode**: plan (default, Studio first), step-by-step, or auto.
-- **Hand-offs**: none, CapCut, DaVinci Resolve, Premiere/Final Cut/NLE XML, LosslessCut (phase 3 adds
-  all but CapCut). **CapCut Pro allowed?** only if CapCut (`--pro yes|no`).
+- **Hand-offs**: none, CapCut, DaVinci Resolve, Premiere, Final Cut, Kdenlive, Shotcut, OTIO/EDL, LosslessCut
+  (`vedit handoffs <p> resolve premiere ...` records the choice; Execute writes them; `references/handoffs.md`).
+  **CapCut Pro allowed?** only if CapCut (`--pro yes|no`).
 - Anything the plan needs that costs money or big downloads (with sizes), asked once here.
 - Optional: music preference, CTA/handle, things to avoid, deadline-driven "fast mode".
 

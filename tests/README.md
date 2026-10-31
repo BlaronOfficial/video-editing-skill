@@ -11,3 +11,10 @@ Run from this folder:
     uv run --project ../scripts python smoke_capcut.py            # build only (prints tracks + warnings)
     uv run --project ../scripts python smoke_capcut.py --write    # write vedit_test_01 into CapCut (CapCut closed)
     uv run --project ../scripts python smoke_render.py            # 540p preview -> out/preview.mp4
+
+v2 phase checks (from the skill root, on copies of the E2E project in `tests/footage/e2e`):
+
+    scripts/.venv/Scripts/python.exe tests/test_v2.py
+    scripts/.venv/Scripts/python.exe tests/test_phase2.py [--render] [--net]
+    scripts/.venv/Scripts/python.exe tests/test_phase3.py [--full] [--apps]   # hand-offs; --apps uses portable
+                                                                              # Shotcut/LosslessCut in .cache/tools
