@@ -61,11 +61,16 @@ def stabilize_detect(src: Source, ss: float, t: float, pre: list[str], params: d
     return name
 
 
-def clip_prefilters(clip: Clip, src: Source, work: Path, *, ss: float, t: float, tag: str = "c") -> list[str]:
+def clip_prefilters(clip: Clip, src: Source, work: Path, *, ss: float, t: float, tag: str = "c",
+                    tracks: dict | None = None, project_root: Path | None = None) -> list[str]:
     """Everything that happens to a clip's picture before speed and framing: the source chain (deinterlace,
-    HDR -> SDR, camera LUT), redaction, black-bar crop, 360 reframe, stabilize, denoise, reverse."""
+    HDR -> SDR, camera LUT), redaction, VFX layers (tracked blur, screen inserts, cut-out background,
+    depth of field), black-bar crop, 360 reframe, stabilize, denoise, reverse."""
+    from .vfx.layers import clip_pieces
     pre = input_chain(src, lut_dir=work)
-    pre += redact_filters(clip.redact, tag)
+    pre += redact_filters([r for r in clip.redact if not r.get("track")], tag)
+    pieces = clip_pieces(clip, src, work, ss=ss, t=t, tag=tag, tracks=tracks, project_root=project_root)
+    pre += pieces
     if clip.src_crop:
         c = clip.src_crop
         pre.append(f"crop={int(c['w'])}:{int(c['h'])}:{int(c['x'])}:{int(c['y'])}")
@@ -77,7 +82,8 @@ def clip_prefilters(clip: Clip, src: Source, work: Path, *, ss: float, t: float,
                    f":roll={pj.get('roll', 0):g}:h_fov={pj.get('h_fov', 100):g}:v_fov={pj.get('v_fov', 70):g}:w={ow}:h={oh}")
     if clip.stabilize is not None:
         st = clip.stabilize
-        trf = stabilize_detect(src, ss, t, list(pre), st, work)
+        # motion is measured on the camera picture, not on composited VFX (a swapped background is static)
+        trf = stabilize_detect(src, ss, t, [f for f in pre if f not in pieces], st, work)
         pre.append(f"vidstabtransform=input={trf}:smoothing={int(st.get('smoothing', 30))}:zoom={float(st.get('zoom', 0)):g}"
                    f":optzoom={1 if not st.get('zoom') else 0}:crop=black:interpol=bicubic")
     if clip.denoise:
@@ -85,6 +91,14 @@ def clip_prefilters(clip: Clip, src: Source, work: Path, *, ss: float, t: float,
     if clip.reverse:
         pre.append("reverse")
     return pre
+
+
+GEOMETRY = ("crop", "v360", "vidstabtransform", "reverse")
+
+
+def geometry_only(pre: list[str]) -> list[str]:
+    """The filters of a clip's prefilters that move pixels (for a matte that must follow the picture)."""
+    return [f for f in pre if f.split("=", 1)[0] in GEOMETRY]
 
 
 def fps_filter(clip: Clip, fps: float) -> str:

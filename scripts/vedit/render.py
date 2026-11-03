@@ -39,7 +39,31 @@ GRADES: dict[str, str] = {
 XFADE_NAMES = {"dissolve": "fade", "crossfade": "fade", "fade": "fade", "fade_black": "fadeblack", "flash": "fadewhite",
                "white_flash": "fadewhite", "slide_left": "slideleft", "slide_right": "slideright", "slide_up": "slideup",
                "slide_down": "slidedown", "wipe": "wipeleft", "zoom_in": "zoomin", "push": "smoothleft",
-               "circle": "circleopen", "blur": "hblur", "glitch": "pixelize", "spin": "radial"}
+               "circle": "circleopen", "blur": "hblur", "glitch": "pixelize", "spin": "radial",
+               "whip_left": "slideleft", "whip_right": "slideright", "whip_up": "slideup", "whip_down": "slidedown",
+               "whip": "slideleft", "zoom_blur": "zoomin"}
+
+# camera-move transitions: the xfade carries the motion, directional / soft blur across the window sells it
+MOTION_BLUR = {"whip_left": ("d", 0), "whip_right": ("d", 0), "whip": ("d", 0), "whip_up": ("d", 90),
+               "whip_down": ("d", 90), "zoom_blur": ("g", 0)}
+
+
+def transition_blur(kind: str, offset: float, d: float, height: int) -> str:
+    """Blur filters for a camera-move transition centred on its xfade window ("" for ordinary ones)."""
+    if kind not in MOTION_BLUR:
+        return ""
+    mode, angle = MOTION_BLUR[kind]
+    r1, r2 = max(4, int(height * 0.012)), max(8, int(height * 0.035))
+    a, b = offset, offset + d
+    ia, ib = offset + d * 0.25, offset + d * 0.75
+    if mode == "d":
+        return (f",dblur=angle={angle}:radius={r1}:enable='between(t,{a:.4f},{b:.4f})'"
+                f",dblur=angle={angle}:radius={r2}:enable='between(t,{ia:.4f},{ib:.4f})'")
+    return (f",gblur=sigma={r1 / 2:.1f}:enable='between(t,{a:.4f},{b:.4f})'"
+            f",gblur=sigma={r2 / 2:.1f}:enable='between(t,{ia:.4f},{ib:.4f})'")
+
+
+SEGMENT_VERSION = 5        # bump when the per-clip filter chain changes, so cached segments re-render
 
 
 class RenderSettings:
@@ -56,6 +80,8 @@ class RenderSettings:
         self.preset = "ultrafast" if preview else (edit.output.preset or cfg["preset"])
         self.lufs = edit.output.audio.target_lufs or cfg["target_lufs"]
         self.abitrate = cfg["audio_bitrate"]
+        self.tracks = {t.id: t for t in edit.tracks}     # vfx tracks, read by clip prefilters
+        self.project_root: Path | None = None
 
     def inter_args(self) -> list[str]:
         """Intermediate segments: identical params so the concat demuxer can stream-copy them."""
@@ -150,13 +176,19 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
     src = edit.sources[clip.source]
     info = probe(src.path)
     W, H, fps = s.W, s.H, s.fps
+    want_head, want_tail = head, tail
     head = min(head, clip.src_in) if src.kind != "image" else head
     tail = min(tail, max(0.0, info.duration - clip.src_out)) if src.kind != "image" else tail
+    # a transition needs handles; where the source has none (a clip starting at 0), the edge frame is held
+    # so the cut keeps its timing
+    pad_h, pad_t = max(0.0, want_head - head), max(0.0, want_tail - tail)
     src_in, src_out = clip.src_in - head, clip.src_out + tail
     dur_src = src_out - src_in
-    out_dur = dur_src / clip.speed
-    key = short_hash(clip.model_dump(mode="json"), head, tail, W, H, fps, s.preview, s.encoder, edit.color.model_dump(),
-                     src.path, os.path.getmtime(src.path), src.color, src.lut)
+    content_dur = dur_src / clip.speed
+    out_dur = content_dur + pad_h + pad_t
+    from .vfx.layers import layer_key
+    key = short_hash(SEGMENT_VERSION, clip.model_dump(mode="json"), want_head, want_tail, W, H, fps, s.preview, s.encoder,
+                     edit.color.model_dump(), src.path, os.path.getmtime(src.path), src.color, src.lut, layer_key(clip, s.tracks))
     out = work / f"seg_{key}.mp4"
     if out.exists() and out.stat().st_size > 0:
         return out
@@ -172,8 +204,48 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
 
     iw, ih = info.display_size
     from .fx import clip_prefilters, fps_filter
-    pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=src_in, t=dur_src)
+    pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=src_in, t=dur_src, tracks=s.tracks,
+                                                          project_root=s.project_root)
     v = ["[0:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.5f}", fps_filter(clip, fps)])]
+    v += _frame_chain(edit, clip, s, work, iw, ih, content_dur)
+    if pad_h or pad_t:
+        v.append(f"tpad=start_mode=clone:start_duration={pad_h:.4f}:stop_mode=clone:stop_duration={pad_t:.4f}")
+    vgraph = ",".join(v) + "[vout]"
+
+    a_in = "[0:a]" if has_audio else "[1:a]"
+    a = [f"{a_in}asetpts=PTS-STARTPTS", "aresample=48000", "aformat=channel_layouts=stereo"]
+    if has_audio and clip.reverse:
+        a.append("areverse")
+    if has_audio and abs(clip.speed - 1) > 1e-3:
+        a.append(_atempo(clip.speed))
+    if has_audio and abs(clip.volume - 1) > 1e-3:
+        a.append(f"volume={clip.volume:.3f}")
+    fin = max(0.02, clip.audio_fade_in) if want_head == 0 else 0
+    fout = max(0.02, clip.audio_fade_out) if want_tail == 0 else 0
+    if fin:
+        a.append(f"afade=t=in:st=0:d={fin:.3f}")
+    if fout:
+        a.append(f"afade=t=out:st={max(0, content_dur - fout):.3f}:d={fout:.3f}")
+    if pad_h:
+        a.append(f"adelay={int(round(pad_h * 1000))}:all=1")
+    if pad_t:
+        a.append(f"apad=pad_dur={pad_t:.4f}")
+    a.append(f"atrim=0:{out_dur:.4f}")
+    agraph = ",".join(a) + "[aout]"
+    graph_file = work / f"seg_{key}.fg"
+    write_text(graph_file, vgraph + ";" + agraph)
+    args += _filter_arg(graph_file) + ["-map", "[vout]", "-map", "[aout]", "-t", f"{out_dur:.4f}"] + s.inter_args() + [str(out)]
+    run(args, cwd=work)
+    return out
+
+
+def _frame_chain(edit: Edit, clip: Clip, s: RenderSettings, work: Path, iw: int, ih: int, out_dur: float, *,
+                 mask: bool = False) -> list[str]:
+    """Source frame (after prefilters, speed and fps) -> canvas: reframe crop keys or fit, zoom, clip
+    transform, clip grade, fades. mask=True is the same geometry for a matte (black fill, no grade, fades
+    to black) so a cut-out follows the picture exactly."""
+    W, H, fps = s.W, s.H, s.fps
+    v: list[str] = []
     if clip.crop:
         # Auto-reframe: moving crop window with the canvas aspect, then scale to the canvas.
         cw_expr = f"min(iw,ih*{W}/{H})"
@@ -184,7 +256,8 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
                  f":y='max(0,min(ih-oh,({_piecewise(keys_y)})*ih-oh/2))'")
         v.append(f"scale={W}:{H},setsar=1")
     else:
-        chain, _ = _fit_chain(iw, ih, W * (2 if clip.zoom else 1), H * (2 if clip.zoom else 1), clip.fit)
+        chain, _ = _fit_chain(iw, ih, W * (2 if clip.zoom else 1), H * (2 if clip.zoom else 1), clip.fit,
+                              bg="black" if mask else "blur", tag="m" if mask else "f")
         v.append(chain)
     if clip.zoom:
         z = clip.zoom
@@ -201,40 +274,75 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
     if abs(t.scale - 1) > 1e-3 or abs(t.x) > 1e-3 or abs(t.y) > 1e-3 or abs(t.rotation) > 1e-3:
         sw, sh = int(W * t.scale) // 2 * 2, int(H * t.scale) // 2 * 2
         rot = f",rotate={t.rotation}*PI/180:c=none:ow=rotw({t.rotation}*PI/180):oh=roth({t.rotation}*PI/180)" if t.rotation else ""
-        v.append(f"scale={sw}:{sh},format=rgba{rot}[fgt];color=c={edit.canvas.background}:s={W}x{H}:r={fps}[bgt];"
-                 f"[bgt][fgt]overlay=x='(W-w)/2+{t.x:.4f}*W/2':y='(H-h)/2-{t.y:.4f}*H/2':shortest=1")
-    grade = _grade_chain(clip.color, None, 1.0, work) if clip.color else ""
+        bgc = "black" if mask else edit.canvas.background
+        lbl = "m" if mask else ""
+        v.append(f"scale={sw}:{sh},format=rgba{rot}[fgt{lbl}];color=c={bgc}:s={W}x{H}:r={fps}[bgt{lbl}];"
+                 f"[bgt{lbl}][fgt{lbl}]overlay=x='(W-w)/2+{t.x:.4f}*W/2':y='(H-h)/2-{t.y:.4f}*H/2':shortest=1")
+    grade = "" if mask else (_grade_chain(clip.color, None, 1.0, work) if clip.color else "")
     if grade:
         v.append(grade)
     if clip.fade_in:
         v.append(f"fade=t=in:st=0:d={clip.fade_in:.3f}")
     if clip.fade_out:
         v.append(f"fade=t=out:st={max(0, out_dur - clip.fade_out):.3f}:d={clip.fade_out:.3f}")
-    v.append("format=yuv420p")
-    vgraph = ",".join(v) + "[vout]"
+    # every segment leaves with the same tags: mixed tags (untagged camera files, BT.601 sources, RGB-blended
+    # VFX) made FFmpeg reconfigure mid-stream when the segments are joined, and an xfade then stopped early
+    v.append("format=gray" if mask else "format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv")
+    return v
 
-    a_in = "[0:a]" if has_audio else "[1:a]"
-    a = [f"{a_in}asetpts=PTS-STARTPTS", "aresample=48000", "aformat=channel_layouts=stereo"]
-    if has_audio and clip.reverse:
-        a.append("areverse")
-    if has_audio and abs(clip.speed - 1) > 1e-3:
-        a.append(_atempo(clip.speed))
-    if has_audio and abs(clip.volume - 1) > 1e-3:
-        a.append(f"volume={clip.volume:.3f}")
-    fin = max(0.02, clip.audio_fade_in) if head == 0 else 0
-    fout = max(0.02, clip.audio_fade_out) if tail == 0 else 0
-    if fin:
-        a.append(f"afade=t=in:st=0:d={fin:.3f}")
-    if fout:
-        a.append(f"afade=t=out:st={max(0, out_dur - fout):.3f}:d={fout:.3f}")
-    a.append(f"atrim=0:{out_dur:.4f}")
-    agraph = ",".join(a) + "[aout]"
-    graph_file = work / f"seg_{key}.fg"
-    write_text(graph_file, vgraph + ";" + agraph)
-    args += _filter_arg(graph_file) + ["-map", "[vout]", "-map", "[aout]", "-t", f"{out_dur:.4f}"] + s.inter_args() + [str(out)]
-    run(args, cwd=work)
+
+def subject_layer(edit: Edit, clip: Clip, s: RenderSettings, work: Path) -> Path:
+    """The clip's person, cut out and framed exactly like the clip (RGBA, canvas size, clip duration), so
+    graphics on lower layers sit behind the person ("text behind the subject")."""
+    from .fx import clip_prefilters, fps_filter, geometry_only
+    from .vfx.frames import source_size
+    from .vfx.layers import _movie, layer_key, matte_file
+    src = edit.sources[clip.source]
+    if src.kind != "video":
+        raise VeditError(f"clip {clip.id}: a subject layer needs a video source")
+    info = probe(src.path)
+    iw, ih = info.display_size
+    sw, sh, _ = source_size(src.path)
+    out_dur = clip.duration
+    dur_src = clip.src_out - clip.src_in
+    key = short_hash("subject1", SEGMENT_VERSION, clip.model_dump(mode="json"), s.W, s.H, s.fps, edit.color.model_dump(), src.path,
+                     os.path.getmtime(src.path), src.color, layer_key(clip, s.tracks))
+    out = work / f"subj_{key}.mkv"
+    if out.exists():
+        return out
+    plain = clip.model_copy(deep=True)
+    plain.subject = None                              # the person itself: no background swap / outline inside the layer
+    pre = clip_prefilters(plain, src, work, ss=clip.src_in, t=dur_src, tracks=s.tracks, project_root=s.project_root)
+    geo = geometry_only(pre)
+    mat = matte_file(src, work, ss=clip.src_in, t=dur_src)
+    timing = [f"setpts=(PTS-STARTPTS)/{clip.speed:.5f}", fps_filter(clip, s.fps)]
+    color = "[0:v]" + ",".join([*pre, *timing]) + "," + ",".join(_frame_chain(edit, clip, s, work, iw, ih, out_dur))
+    grade = _grade_chain(edit.color.preset, edit.color.lut, edit.color.intensity, work)
+    if grade:                                          # the base gets the global grade in compose: match it
+        color += "," + grade
+    alpha = (f"{_movie(mat, sw, sh, 'yuv420p')},{','.join([*geo, *timing])},"
+             + ",".join(_frame_chain(edit, clip, s, work, iw, ih, out_dur, mask=True)))
+    graph = f"{color},format=yuva420p[c];{alpha}[a];[c][a]alphamerge,trim=duration={out_dur:.4f}[v]"
+    gfile = work / f"subj_{key}.fg"
+    write_text(gfile, graph)
+    run([ffmpeg(), "-y", "-v", "error", "-nostdin", "-ss", f"{clip.src_in:.4f}", "-t", f"{dur_src:.4f}", "-i", src.path,
+         *_filter_arg(gfile), "-map", "[v]", "-an", "-c:v", "ffv1", "-level", "3", "-pix_fmt", "yuva420p", out.name],
+        cwd=work, timeout=7200)
     return out
 
+
+def subject_overlays(edit: Edit, s: RenderSettings, work: Path) -> list[Overlay]:
+    """Overlays for clips whose subject sits above some graphics (`subject.above` = the first overlay layer
+    that stays above the person; lower layers go behind)."""
+    outs = []
+    for clip in [*edit.main, *[b for b in edit.broll if b.start is not None]]:
+        sub = clip.subject or {}
+        if sub.get("above") is None:
+            continue
+        path = subject_layer(edit, clip, s, work)
+        outs.append(Overlay(id=f"subject_{clip.id}", start=clip.start or 0.0, duration=clip.duration, path=str(path),
+                            fit="cover", layer=int(sub["above"]), label=f"subject of {clip.id}"))
+    return outs
 
 def assemble_main(edit: Edit, s: RenderSettings, work: Path) -> Path:
     if not edit.main:
@@ -283,7 +391,8 @@ def assemble_main(edit: Edit, s: RenderSettings, work: Path) -> Path:
         d = tr.duration
         offset = max(0.0, acc - d)
         name = XFADE_NAMES.get(tr.type, tr.type)
-        parts.append(f"{cur_v}[{k}:v]xfade=transition={name}:duration={d:.3f}:offset={offset:.4f}[v{k}]")
+        parts.append(f"{cur_v}[{k}:v]xfade=transition={name}:duration={d:.3f}:offset={offset:.4f}"
+                     f"{transition_blur(tr.type, offset, d, s.H)}[v{k}]")
         parts.append(f"{cur_a}[{k}:a]acrossfade=d={d:.3f}:c1=tri:c2=tri[a{k}]")
         cur_v, cur_a = f"[v{k}]", f"[a{k}]"
         acc = acc + probe(work / run_files[k].name).duration - d
@@ -296,8 +405,30 @@ def assemble_main(edit: Edit, s: RenderSettings, work: Path) -> Path:
 
 # ------------------------------------------------------------------ stage 2
 
+def still_loop(duration: float, fps: float) -> str:
+    """A still held for `duration` inside the graph. FFmpeg 8.1 can stall a whole compose when a `-loop 1`
+    image input feeds an overlay (the main picture froze for seconds in tests), so stills enter once and
+    are repeated by the loop filter instead."""
+    n = max(1, int(round(duration * fps)))
+    return f"loop=loop={n - 1}:size=1:start=0,setpts=N/({fps}*TB)"
+
+
 def _overlay_xy(ov_w: str, ov_h: str, x: float, y: float) -> tuple[str, str]:
     return f"(W-{ov_w})/2+{x:.4f}*W/2", f"(H-{ov_h})/2-{y:.4f}*H/2"
+
+
+def _attach_commands(edit: Edit, ov: Overlay, s: RenderSettings, work: Path, name: str) -> str | None:
+    """sendcmd file moving overlay@<name> along its track (canvas positions scaled to this render)."""
+    from .vfx.track import attach_path
+    path = attach_path(edit, ov, s.fps)
+    if not path:
+        print(f"warning: overlay {ov.id} is attached to a track that is never on screen during it")
+        return None
+    k = s.W / edit.canvas.width
+    lines = [f"{t:.4f} overlay@{name} x {x * k:.2f}-w/2, overlay@{name} y {y * k:.2f}-h/2;" for t, x, y in path]
+    f = work / f"{name}_{short_hash(lines)}.cmd"
+    write_text(f, "\n".join(lines) + "\n")
+    return f.name
 
 
 def _effect_filters(edit: Edit, s: RenderSettings) -> list[str]:
@@ -326,6 +457,24 @@ def _effect_filters(edit: Edit, s: RenderSettings) -> list[str]:
         elif kind == "zoom_pulse":
             z = f"(1+{0.08 * k:.3f}*if({en},sin(PI*(t-{a:.3f})/{max(fx.duration, 0.01):.3f}),0))"
             out.append(f"scale=w='trunc({s.W}*{z}/2)*2':h='trunc({s.H}*{z}/2)*2':eval=frame,crop={s.W}:{s.H}")
+        elif kind == "motion_blur":
+            # tmix with `enable` drops frames when it switches on (10 of 414 in a test): blur a trimmed copy
+            # of the window instead and lay it over the picture
+            n = max(2, min(9, int(round(3 + 4 * k))))
+            tg = f"mb{len(out)}"
+            out.append(f"split[{tg}a][{tg}b];[{tg}b]trim=start={max(0.0, a - n / s.fps):.4f}:end={b:.4f},"
+                       f"tmix=frames={n}:weights='{' '.join(['1'] * n)}'[{tg}c];"
+                       f"[{tg}a][{tg}c]overlay=eof_action=pass:enable='{en}'")
+        elif kind == "handheld":
+            # organic drift: three incommensurate sines per axis, in a 4 % zoom margin
+            amp = 0.012 * k
+            mx, my = f"{amp:.4f}*iw", f"{amp:.4f}*ih"
+            wob = lambda a, b, c: f"(0.6*sin(t*{a})+0.3*sin(t*{b}+1.3)+0.1*sin(t*{c}+0.4))"
+            out.append(f"crop=iw*(1-{2 * amp:.4f}):ih*(1-{2 * amp:.4f})"
+                       f":x='{mx}*(1+if({en},{wob(1.7, 3.1, 7.3)},0))':y='{my}*(1+if({en},{wob(1.3, 2.9, 6.1)},0))',"
+                       f"scale={s.W}:{s.H}")
+        elif kind == "whip":
+            out.append(f"dblur=angle=0:radius={max(8, int(s.H * 0.035))}:enable='{en}'")
         elif kind == "flash":
             out.append(f"eq=brightness='if({en},{0.6 * k:.2f}*(1-(t-{a:.3f})/{max(fx.duration, 0.01):.3f}),0)':eval=frame")
     return out
@@ -440,7 +589,10 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
             continue
         src = edit.sources[clip.source]
         info = probe(src.path)
-        if src.kind == "image":
+        still = src.kind == "image" and not src.path.lower().endswith(".gif")
+        if still:
+            args += ["-i", src.path]                   # looped in the graph (see still_loop)
+        elif src.kind == "image":
             args += ["-loop", "1", "-framerate", f"{fps}", "-t", f"{clip.duration:.3f}", "-i", src.path]
         else:
             args += ["-ss", f"{clip.src_in:.3f}", "-t", f"{clip.src_out - clip.src_in:.3f}", "-i", src.path]
@@ -450,8 +602,9 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
         chain, _ = _fit_chain(iw, ih, W, H, clip.fit, tag=f"b{i}")
         from .fx import clip_prefilters, fps_filter
         pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=clip.src_in, t=clip.src_out - clip.src_in,
-                                                              tag=f"b{i}")
-        body = f"[{idx}:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.4f}", fps_filter(clip, fps), chain])
+                                                              tag=f"b{i}", tracks=s.tracks, project_root=s.project_root)
+        timing = [still_loop(clip.duration, fps)] if still else [f"setpts=(PTS-STARTPTS)/{clip.speed:.4f}", fps_filter(clip, fps)]
+        body = f"[{idx}:v]" + ",".join([*pre, *timing, chain])
         if clip.zoom:
             z = clip.zoom
             D = max(clip.duration, 1e-3)
@@ -477,7 +630,10 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
         if not ov.path or not Path(ov.path).exists():
             raise VeditError(f"Overlay {ov.id} has no rendered file. Run `vedit mg render` first.")
         info = probe(ov.path)
-        if info.kind == "image" or info.duration <= 0:
+        still = (info.kind == "image" or info.duration <= 0) and not ov.path.lower().endswith(".gif")
+        if still:
+            args += ["-i", ov.path]                    # looped in the graph (see still_loop)
+        elif info.kind == "image" or info.duration <= 0:
             args += ["-loop", "1", "-framerate", f"{fps}", "-t", f"{ov.duration:.3f}", "-i", ov.path]
         else:
             if ov.path.lower().endswith(".webm"):
@@ -485,7 +641,7 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
             args += ["-t", f"{ov.duration:.3f}", "-i", ov.path]
         idx = n_in
         n_in += 1
-        chain = f"[{idx}:v]setpts=PTS-STARTPTS,fps={fps},format=rgba"
+        chain = f"[{idx}:v]{still_loop(ov.duration, fps) if still else f'setpts=PTS-STARTPTS,fps={fps}'},format=rgba"
         if ov.chroma:
             chain += f",colorkey={ov.chroma.replace('#', '0x')}:0.28:0.08"
         t = ov.transform
@@ -503,7 +659,14 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
         chain += f",setpts=PTS+{ov.start:.4f}/TB[ov{i}]"
         v_parts.append(chain)
         x, y = _overlay_xy("w", "h", t.x, t.y)
-        v_parts.append(f"{cur}[ov{i}]overlay=x='{x}':y='{y}':eof_action=pass:format=auto:"
+        name = ""
+        if ov.attach:
+            # follow a track: one position command per frame (no giant expressions), read by overlay@name
+            cmd = _attach_commands(edit, ov, s, work, f"att{i}")
+            if cmd:
+                v_parts.append(f"{cur}sendcmd=f={cmd}[sc{i}]")
+                cur, name = f"[sc{i}]", f"@att{i}"
+        v_parts.append(f"{cur}[ov{i}]overlay{name}=x='{x}':y='{y}':eof_action=pass:format=auto:"
                        f"enable='between(t,{ov.start:.3f},{ov.start + ov.duration:.3f})'[oo{i}]")
         cur = f"[oo{i}]"
 
@@ -524,13 +687,40 @@ def compose(edit: Edit, aroll: Path, s: RenderSettings, work: Path, out: Path, a
     tail.append("setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv")   # frames carry the tags
     v_parts.append(f"{cur}{','.join(tail)}[vfinal]")
 
-    a_parts, n_in = _audio_graph(edit, s, hooks, args, n_in)
+    # Picture and sound run as separate FFmpeg processes, then mux. In one process, FFmpeg 8.1 silently drops
+    # main-track frames while an overlay that starts later is waited for and loudnorm holds ~3 s of audio
+    # (measured: 345 of 414 frames survived, the picture froze for ~2 s per graphic).
+    import threading
+    dur = f"{edit.duration:.4f}"
+    a_args = [ffmpeg(), "-y", "-v", "error", "-nostdin", "-i", str(aroll)]
+    a_parts, _ = _audio_graph(edit, s, hooks, a_args, 1)
+    a_file = work / "compose_audio.fg"
+    write_text(a_file, ";\n".join(a_parts))
+    mix = work / "compose_audio.m4a"
+    a_args += ["-/filter_complex", a_file.name, "-map", "[afinal]", "-t", dur, "-c:a", "aac", "-b:a", s.abitrate, mix.name]
+    audio_err: list[BaseException] = []
+
+    def _audio() -> None:
+        try:
+            run(a_args, cwd=work, capture=True)
+        except BaseException as exc:      # re-raised on the main thread
+            audio_err.append(exc)
+
+    th = threading.Thread(target=_audio, daemon=True)
+    th.start()
     graph_file = work / "compose.fg"
-    write_text(graph_file, ";\n".join(v_parts + a_parts))
+    write_text(graph_file, ";\n".join(v_parts))
     enc = video_encoder_args(s.encoder, crf=s.crf, preset=s.preset)
-    args += ["-/filter_complex", graph_file.name, "-map", "[vfinal]", "-map", "[afinal]", "-t", f"{edit.duration:.4f}",
-             "-r", f"{fps}"] + enc + ["-c:a", "aac", "-b:a", s.abitrate, "-movflags", "+faststart", str(out.resolve())]
+    picture = work / "compose_video.mp4"
+    args += ["-/filter_complex", graph_file.name, "-map", "[vfinal]", "-an", "-t", dur, "-r", f"{fps}"] + enc + [picture.name]
     run(args, cwd=work, capture=True)
+    th.join()
+    if audio_err:
+        raise audio_err[0]
+    run([ffmpeg(), "-y", "-v", "error", "-nostdin", "-i", picture.name, "-i", mix.name, "-map", "0:v", "-map", "1:a",
+         "-c", "copy", "-t", dur, "-movflags", "+faststart", str(out.resolve())], cwd=work, capture=True)
+    picture.unlink(missing_ok=True)
+    mix.unlink(missing_ok=True)
     return out
 
 
@@ -574,10 +764,14 @@ def render(edit: Edit, out: str | Path, *, preview: bool = False, work_dir: str 
         from .custom import materialize
         edit, hooks = materialize(edit, Path(project_root))
     s = RenderSettings(edit, preview)
+    s.project_root = Path(project_root) if project_root else None
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     work = Path(work_dir) if work_dir else out.parent / "work"
     work.mkdir(parents=True, exist_ok=True)
+    subjects = subject_overlays(edit, s, work)
+    if subjects:                       # first among equals: overlays on the same layer stay above the person
+        edit.overlays = subjects + edit.overlays
     ass_path = None
     if burn_captions and edit.captions.enabled:
         chunks = edit.captions.chunks or caps.build_chunks(edit)

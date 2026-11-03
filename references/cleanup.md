@@ -21,7 +21,7 @@ Two ways in, the same filters:
 |---|---|---|
 | Shaky handheld | `--stabilize` | vidstab, two passes; smoothing 30 = 1 s each side at 30 fps (more = steadier, less = keeps intended moves); zooms slightly to hide edges. Measured: jitter on a shaken shot down by ~40 % |
 | Grain / low light | `--denoise light\|medium\|strong` | light/medium = hqdn3d (fast; +0.8 / +3 dB), strong = non-local means (best detail, ~0.4 s per 720p frame: say so for long clips). Never heavy on screen recordings or text |
-| Faces, plates, names, a logo | `--redact x,y,w,h:pixelate` (or blur, delogo) | source pixels; add `start`/`end` in edit.json for a time window. Moving faces need tracking (phase 4) |
+| Faces, plates, names, a logo | `--redact x,y,w,h:pixelate` (or blur, delogo) | source pixels; add `start`/`end` in edit.json for a time window. Moving faces: `vedit vfx faces <p> --blur` (tracked, `references/vfx.md`) |
 | Black bars | `--crop` or `vedit footage bars <p> --apply` | crop before reframing |
 | Tilted horizon | `--straighten -2.5` | rotates and zooms just enough to hide the corners |
 | 360 camera | `--projection 90,0,100,60` | equirectangular to a flat view (yaw, pitch, horizontal / vertical field of view) |

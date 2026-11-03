@@ -1,6 +1,6 @@
 ---
 name: video-editing-skill
-description: AI video editing and motion design with Claude as the director. A native engine (FFmpeg, HTML/GSAP/Three.js motion graphics, custom code) turns raw footage - talking heads, YouTube, ads, faceless/voiceover - into finished videos: transcript cuts, word-timed captions (English, Bangla, Banglish), graphics, b-roll, music and SFX, colour, reframes, shorts, thumbnails, voiceover. It fixes camera footage (iPhone HDR, Log, variable frame rate, shake, grain), syncs external mics and checks each platform's specs. Plan mode opens a live Studio (a Claude Artifact) to preview and approve before rendering. It mixes what the session offers (logged-in web AIs like Gemini or Canva, MCP connectors, the browser) and hands off to CapCut, DaVinci Resolve, Premiere, Final Cut and LosslessCut. Use whenever the user wants to edit, cut, caption, reframe, grade, stabilize, export or add graphics or effects to video, make reels, shorts, TikToks or YouTube videos, or mentions CapCut, DaVinci Resolve or LosslessCut.
+description: AI video editing and motion design with Claude as the director. A native engine (FFmpeg, HTML/GSAP/Three.js graphics, custom code) turns raw footage - talking heads, YouTube, ads, faceless/voiceover - into finished videos: transcript cuts, word-timed captions (English, Bangla, Banglish), graphics, b-roll, music and SFX, colour, reframes, shorts, thumbnails. It fixes camera footage (HDR, Log, shake, grain), syncs mics, checks platform specs, and does VFX and 3D: 3D titles, tracking, face blur, screen replacement, text behind people, depth. Plan mode opens a live Studio (a Claude Artifact) to preview and approve before rendering. It mixes what the session offers (logged-in web AIs, MCP connectors, the browser) and hands off to CapCut, DaVinci Resolve, Premiere, Final Cut and LosslessCut. Use whenever the user wants to edit, cut, caption, reframe, grade, stabilize, export or add graphics or effects to video, make reels, shorts, TikToks or YouTube videos, or mentions CapCut, DaVinci Resolve or LosslessCut.
 ---
 
 # Video editing (vedit)
@@ -124,4 +124,6 @@ FX are how edits go from good to excellent. Templates are a starting point, not 
 | Camera footage: HDR, Log, variable frame rate, interlacing, black bars, devices | `references/footage.md` |
 | Platforms, delivery checks, export presets, size targets, safe zones, repair | `references/delivery.md` |
 | Clean-up and time FX: stabilize, denoise, redact, straighten, 360, speed ramps, freeze, reverse | `references/cleanup.md` |
+| VFX and 3D: 3D templates, tracking, follow labels, face blur, screen replacement, cut-outs, depth, camera FX | `references/vfx.md` |
+| Blender 3D renders (optional add-on) | `references/blender.md` |
 | Setup, add-ons, models, MCP, Claude app, troubleshooting | `references/setup.md` |

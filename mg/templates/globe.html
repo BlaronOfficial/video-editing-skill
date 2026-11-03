@@ -1,0 +1,139 @@
+<!doctype html>
+<!-- globe: a dotted data globe that turns to a place, drops pins and draws arcs between them.
+     With `texture` (an equirectangular map: land bright, sea dark) the dots trace the continents; without
+     it the globe is an even dot sphere with a lat/long grid.
+     data: {pins: [{lat, lon, label}], arcs: [[from, to], ...], focus: pin index, color: "#hex" (dots),
+            accent: "#hex" (pins, arcs), texture: "C:/path/earth_mask.png", y: 0..1, size: 0..1, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, run, ease, seg, clamp, lerp, fontsReady, label, softDisc, mediaUrl, ready } from "/__mg/three-kit.js";
+const d = D({ pins: [{ lat: 23.81, lon: 90.41, label: "Dhaka" }, { lat: 51.51, lon: -0.13, label: "London" }],
+              arcs: [[0, 1]], focus: 0, color: "#8fb3ff", accent: "#FFE14D", texture: "", y: 0.5, size: 0.8, dots: 9000,
+              duration: 5 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+const R = 1;
+const toVec = (lat, lon, r = R) => {
+  const phi = THREE.MathUtils.degToRad(90 - lat), th = THREE.MathUtils.degToRad(lon + 180);
+  return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+};
+
+async function landMask(path) {
+  if (!path) return null;
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = mediaUrl(path);
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = 720; c.height = 360;
+    const x = c.getContext("2d");
+    x.drawImage(img, 0, 0, 720, 360);
+    const px = x.getImageData(0, 0, 720, 360).data;
+    return (lat, lon) => {
+      const u = Math.floor(((lon + 180) / 360) * 719), v = Math.floor(((90 - lat) / 180) * 359);
+      const i = (v * 720 + u) * 4;
+      return (px[i] + px[i + 1] + px[i + 2]) / 3 > 100;
+    };
+  } catch { return null; }
+}
+
+ready((async () => {
+  const st = stage({ fov: 30, env: false });
+  const { scene, camera, renderer } = st;
+  camera.position.set(0, 0, 6);
+  await fontsReady([`700 120px "Poppins"`, `700 120px "Hind Siliguri"`]);
+  const land = await landMask(d.texture);
+  const globe = new THREE.Group();
+  scene.add(globe);
+  // inner sphere hides the dots on the far side
+  globe.add(new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 64, 48),
+                           new THREE.MeshBasicMaterial({ color: new THREE.Color(d.color).multiplyScalar(0.12), transparent: true, opacity: 0.92 })));
+  const N = d.dots, pts = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), th = golden * i;
+    const lat = THREE.MathUtils.radToDeg(Math.asin(y)), lon = THREE.MathUtils.radToDeg(Math.atan2(Math.sin(th) * r, Math.cos(th) * r));
+    if (land && !land(lat, lon)) continue;
+    pts.push(toVec(lat, lon, R * 1.002));
+  }
+  const dotGeo = new THREE.BufferGeometry().setFromPoints(pts);
+  globe.add(new THREE.Points(dotGeo, new THREE.PointsMaterial({ color: new THREE.Color(d.color), size: land ? 0.018 : 0.012,
+                                                               transparent: true, opacity: land ? 0.95 : 0.55 })));
+  if (!land) {
+    const gm = new THREE.LineBasicMaterial({ color: new THREE.Color(d.color), transparent: true, opacity: 0.18 });
+    for (let lat = -60; lat <= 60; lat += 30) {
+      const ring = []; for (let lon = -180; lon <= 180; lon += 4) ring.push(toVec(lat, lon, R * 1.003));
+      globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), gm));
+    }
+    for (let lon = -180; lon < 180; lon += 30) {
+      const ring = []; for (let lat = -90; lat <= 90; lat += 4) ring.push(toVec(lat, lon, R * 1.003));
+      globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), gm));
+    }
+  }
+  const halo = softDisc(R * 1.45, { color: d.color, opacity: 0.35 });
+  halo.position.z = -0.5;
+  scene.add(halo);
+
+  const acc = new THREE.Color(d.accent);
+  const pins = (d.pins || []).map((p) => {
+    const g = new THREE.Group();
+    const pos = toVec(p.lat, p.lon, R);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), new THREE.MeshBasicMaterial({ color: acc }));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.045, 32), new THREE.MeshBasicMaterial({ color: acc, transparent: true, side: THREE.DoubleSide }));
+    ring.lookAt(pos.clone().multiplyScalar(2));
+    g.add(head, ring);
+    g.position.copy(pos);
+    const lab = p.label ? label(p.label, { height: 0.09, weight: 700, renderer, bg: "rgba(10,12,18,.75)" }) : null;
+    if (lab) { lab.position.copy(pos.clone().multiplyScalar(1.12)); globe.add(lab); }
+    globe.add(g);
+    return { g, ring, lab, pos };
+  });
+  const arcs = (d.arcs || []).filter(([a, b]) => pins[a] && pins[b]).map(([a, b]) => {
+    const A = pins[a].pos, B = pins[b].pos;
+    const mid = A.clone().add(B).multiplyScalar(0.5);
+    const lift = 1 + A.distanceTo(B) * 0.45;
+    mid.normalize().multiplyScalar(R * lift);
+    const curve = new THREE.QuadraticBezierCurve3(A.clone().multiplyScalar(1.004), mid, B.clone().multiplyScalar(1.004));
+    const geo = new THREE.TubeGeometry(curve, 96, 0.006, 6, false);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: acc }));
+    globe.add(mesh);
+    return { mesh, count: geo.index.count };
+  });
+
+  const vw = view(camera, 6);
+  const sc = d.size * Math.min(vw.w, vw.h) / (2 * R * 1.15);
+  globe.scale.setScalar(sc);
+  halo.scale.setScalar(sc);
+  globe.position.y = halo.position.y = (0.5 - d.y) * vw.h;
+  const f = pins[d.focus] || pins[0];
+  const yawTarget = f ? -Math.atan2(f.pos.x, f.pos.z) : 0;
+  const pitchTarget = f ? Math.asin(f.pos.y / R) * 0.7 : 0;
+  const dynamic = new Set(pins.flatMap((pn) => [pn.ring.material, pn.lab?.material]).filter(Boolean));
+  const statics = [];
+  scene.traverse((o) => { if (o.material && !dynamic.has(o.material)) { o.material.transparent = true; statics.push([o.material, o.material.opacity]); } });
+  const D0 = d.duration;
+  run(st, (t) => {
+    const p = ease.inOut(seg(t, 0, Math.min(2.2, D0 * 0.5)));
+    globe.rotation.set(lerp(0.15, pitchTarget, p), lerp(yawTarget - 2.4, yawTarget, p) + Math.max(0, t - 2.2) * 0.05, 0);
+    globe.scale.setScalar(sc * lerp(0.85, 1, ease.out(seg(t, 0, 0.8))));
+    pins.forEach((pn, i) => {
+      const q = ease.back(seg(t, 1.2 + i * 0.25, 1.6 + i * 0.25), 2);
+      pn.g.scale.setScalar(Math.max(0.0001, q));
+      const pulse = ((t * 0.9 + i * 0.3) % 1);
+      pn.ring.scale.setScalar(1 + pulse * 2.2);
+      pn.ring.material.opacity = (1 - pulse) * clamp(q);
+      if (pn.lab) { pn.lab.quaternion.copy(camera.quaternion).premultiply(globe.quaternion.clone().invert()); pn.lab.material.opacity = clamp(q); }
+    });
+    arcs.forEach((a, i) => {
+      const q = ease.inOut(seg(t, 1.8 + i * 0.35, 2.8 + i * 0.35));
+      a.mesh.geometry.setDrawRange(0, Math.floor(a.count * q / 3) * 3);
+    });
+    const fade = (1 - ease.in(seg(t, D0 - 0.4, D0))) * ease.out(seg(t, 0, 0.4));
+    statics.forEach(([m, o]) => { m.opacity = o * fade; });
+    pins.forEach((pn) => { pn.ring.material.opacity *= fade; if (pn.lab) pn.lab.material.opacity *= fade; });
+  }, D0);
+})());
+</script></body></html>

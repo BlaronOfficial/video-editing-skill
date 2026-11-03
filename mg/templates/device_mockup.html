@@ -1,0 +1,121 @@
+<!doctype html>
+<!-- device_mockup: a phone, tablet or laptop in 3D showing an image or a video (frame-exact) on its screen.
+     Generic device shapes only (no brand marks).
+     data: {screen: "C:/path/app.png|.mp4", device: phone|tablet|laptop, color: "#hex" body, move: float|turn|push|open,
+            tilt: degrees, y: 0..1, width: 0..1, accent, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, lights, run, ease, seg, lerp, fontsReady, loadTexture, loadVideo, isVideo, roundedRect,
+         softDisc, canvasTexture, ready } from "/__mg/three-kit.js";
+const d = D({ screen: "", device: "phone", color: "#1c1d22", move: "float", tilt: 14, y: 0.5, width: 0.5, accent: "#FFE14D", duration: 4 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+const SPEC = { phone: { w: 1, h: 2.06, r: 0.17, d: 0.085, bez: 0.045 }, tablet: { w: 1.5, h: 2.05, r: 0.12, d: 0.07, bez: 0.07 },
+               laptop: { w: 3.0, h: 1.92, r: 0.07, d: 0.05, bez: 0.07 } };
+
+function placeholder(ar) {
+  const c = document.createElement("canvas");
+  c.width = 600; c.height = Math.round(600 / ar);
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, c.width, c.height);
+  g.addColorStop(0, "#5b5ff5"); g.addColorStop(1, "#ff4d8d");
+  x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = "#ffffffcc"; x.font = "800 64px Poppins"; x.textAlign = "center"; x.fillText("SCREEN", c.width / 2, c.height / 2);
+  return canvasTexture(c);
+}
+
+// Rounded-rect geometry with 0..1 UVs (ShapeGeometry UVs are in shape units).
+function screenGeo(w, h, r) {
+  const g = new THREE.ShapeGeometry(roundedRect(w, h, r), 12);
+  const uv = g.attributes.uv, pos = g.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+  return g;
+}
+
+ready((async () => {
+  const st = stage({ fov: 28 });
+  const { scene, camera, renderer } = st;
+  camera.position.set(0, 0, 12);
+  lights(scene, { rim: d.accent, rimIntensity: 2.5 });
+  await fontsReady([`800 64px "Poppins"`]);
+  const sp = SPEC[d.device] || SPEC.phone;
+  const sw = sp.w - 2 * sp.bez, sh = sp.h - 2 * sp.bez;
+  let tex, vid = null;
+  try {
+    if (isVideo(d.screen)) { vid = await loadVideo(d.screen); tex = vid.texture; }
+    else tex = d.screen ? await loadTexture(d.screen, renderer) : placeholder(sw / sh);
+  } catch { tex = placeholder(sw / sh); }
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  // cover-fit the media to the screen
+  const mar = (tex.image?.videoWidth || tex.image?.width || 1) / (tex.image?.videoHeight || tex.image?.height || 1);
+  const sar = sw / sh;
+  if (mar > sar) { tex.repeat.set(sar / mar, 1); tex.offset.set((1 - sar / mar) / 2, 0); }
+  else { tex.repeat.set(1, mar / sar); tex.offset.set(0, (1 - mar / sar) / 2); }
+
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(sp.w, sp.h, sp.r), { depth: sp.d, bevelEnabled: true,
+    bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 4, curveSegments: 16 }),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(d.color), metalness: 0.75, roughness: 0.28 }));
+  body.position.z = -sp.d - 0.02;
+  const screen = new THREE.Mesh(screenGeo(sw, sh, Math.max(0.01, sp.r - sp.bez * 0.8)),
+                                new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  screen.position.z = 0.003;
+  const glass = new THREE.Mesh(screenGeo(sp.w - 0.01, sp.h - 0.01, sp.r),
+                               new THREE.MeshPhysicalMaterial({ color: 0x000000, metalness: 0, roughness: 0.05, transparent: true,
+                                                                opacity: 0.12, clearcoat: 1 }));
+  glass.position.z = 0.006;
+  const lid = new THREE.Group();
+  lid.add(body, screen, glass);
+  if (d.device === "phone") {
+    const island = new THREE.Mesh(new THREE.ShapeGeometry(roundedRect(0.26, 0.075, 0.037), 8), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+    island.position.set(0, sh / 2 - 0.07, 0.005);
+    lid.add(island);
+  }
+  const device = new THREE.Group();
+  device.add(lid);
+  let base = null;
+  if (d.device === "laptop") {
+    const pivot = new THREE.Group();                 // hinge at the bottom edge of the lid
+    lid.position.set(0, sp.h / 2, 0);
+    pivot.add(lid);
+    device.remove(lid);
+    device.add(pivot);
+    base = new THREE.Mesh(new THREE.ExtrudeGeometry(roundedRect(sp.w * 1.06, sp.h * 0.72, 0.08), { depth: 0.06, bevelEnabled: true,
+      bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 3 }), new THREE.MeshStandardMaterial({ color: new THREE.Color(d.color).multiplyScalar(1.3), metalness: 0.8, roughness: 0.3 }));
+    base.rotation.x = -Math.PI / 2;
+    base.position.set(0, 0, sp.h * 0.36);
+    device.add(base);
+    device.userData.pivot = pivot;
+  }
+  const shadow = softDisc(sp.w * 0.8, { opacity: 0.45 });
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = d.device === "laptop" ? -0.08 : -sp.h / 2 - 0.25;
+  const root = new THREE.Group();
+  root.add(device, shadow);
+  scene.add(root);
+  const vw = view(camera, 12);
+  const k = d.width * Math.min(vw.w / sp.w, vw.h * 0.8 / sp.h);
+  root.scale.setScalar(k);
+  const y0 = (0.5 - d.y) * vw.h - (d.device === "laptop" ? sp.h * k * 0.35 : 0);
+  const tilt = THREE.MathUtils.degToRad(d.tilt);
+  const D0 = d.duration, tIn = Math.min(0.9, D0 * 0.3);
+
+  run(st, (t) => {
+    const p = ease.out(seg(t, 0, tIn));
+    root.position.y = y0 + lerp(-vw.h * 0.5, 0, p) + Math.sin(t * 1.5) * 0.04 * k;
+    let ry = 0, rx = tilt * 0.4;
+    if (d.move === "turn") ry = lerp(-0.9, 0.35, ease.inOut(seg(t, 0, D0)));
+    else if (d.move === "push") { ry = -0.25; root.scale.setScalar(k * lerp(0.9, 1.08, ease.inOut(seg(t, 0, D0)))); }
+    else ry = -0.32 + Math.sin(t * 0.8) * 0.12;
+    device.rotation.set(rx, ry, d.device === "phone" ? -0.06 : 0);
+    if (device.userData.pivot) {
+      const open = d.move === "open" ? ease.out(seg(t, 0.2, tIn + 0.6)) : 1;
+      device.userData.pivot.rotation.x = lerp(Math.PI / 2, -0.18, open);
+    }
+    const fade = 1 - ease.in(seg(t, D0 - 0.35, D0));
+    root.traverse((o) => { if (o.material) { o.material.transparent = true; o.material.opacity = (o === glass ? 0.12 : o === shadow ? 0.45 : 1) * fade * seg(t, 0, 0.2); } });
+    if (vid) return vid.seek(t);
+  }, D0);
+})());
+</script></body></html>

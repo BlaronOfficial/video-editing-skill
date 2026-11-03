@@ -87,7 +87,14 @@ def run_fx(edit: Edit, fx: CustomFX, project_root: Path, *, force: bool = False)
                            formats=["prores"])
         outs[0].replace(out) if outs[0] != out else None
     elif fx.kind == "blender":
-        raise VeditError("CustomFX kind=blender arrives with the Blender add-on (phase 4).")
+        from . import blender
+        if not fx.file:
+            raise VeditError(f"CustomFX {fx.id}: kind=blender needs `file` (a bpy script or a blender/ template name)")
+        res = blender.render(fx.file, out.with_suffix(""), data=fx.params, width=W, height=H, fps=fps, duration=dur,
+                             formats=["prores"], engine=fx.params.get("engine", "eevee"), project_root=project_root)
+        produced = Path(res["outputs"][0])
+        if produced != out:
+            produced.replace(out)
     if not out.exists():
         raise VeditError(f"CustomFX {fx.id} did not write {out}")
     fx.path, fx.cache_key = str(out), key

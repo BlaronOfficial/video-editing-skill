@@ -141,6 +141,49 @@ export class Player extends Emitter {
 
   toggle() { this.playing ? this.pause() : this.play(); }
 
+  // Collect `n` clicks on the picture (canvas 0..1 coordinates), e.g. the corners of a screen to replace.
+  // Esc cancels (resolves null). The playhead stays where it is, so the picked moment is this.t.
+  pickPoints(n, hint = "") {
+    this.pause?.();
+    return new Promise((resolve) => {
+      const pts = [];
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "pick-svg");
+      svg.setAttribute("viewBox", "0 0 1 1");
+      svg.setAttribute("preserveAspectRatio", "none");
+      const tip = h("div", { class: "pick-tip", role: "status" }, hint || `Click ${n} points on the picture. Esc cancels.`);
+      const layer = h("div", { class: "pick-layer", tabindex: "-1" }, svg, tip);
+      const done = (val) => { layer.remove(); window.removeEventListener("keydown", onKey, true); resolve(val); };
+      const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); done(null); } };
+      const draw = () => {
+        svg.replaceChildren();
+        if (pts.length > 1) {
+          const poly = document.createElementNS(svg.namespaceURI, pts.length === n ? "polygon" : "polyline");
+          poly.setAttribute("points", pts.map((q) => q.join(",")).join(" "));
+          poly.setAttribute("class", "pick-shape");
+          svg.append(poly);
+        }
+        pts.forEach(([x, y], i) => {
+          const c = document.createElementNS(svg.namespaceURI, "circle");
+          c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", 0.012);
+          c.setAttribute("class", "pick-dot");
+          svg.append(c);
+        });
+        tip.textContent = pts.length < n ? `${hint || "Click the corners"}: ${pts.length + 1} of ${n}. Esc cancels.` : "Done";
+      };
+      layer.addEventListener("pointerdown", (e) => {
+        const r = this.stage.getBoundingClientRect();
+        pts.push([Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]);
+        draw();
+        if (pts.length === n) setTimeout(() => done(pts.map((q) => q.map((v) => +v.toFixed(4)))), 250);
+      });
+      window.addEventListener("keydown", onKey, true);
+      this.stage.append(layer);
+      layer.focus();
+      draw();
+    });
+  }
+
   seek(t) {
     this.t = clamp(t, 0, Math.max(0, this.duration - 0.001));
     if (this.playing) {

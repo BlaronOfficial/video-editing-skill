@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- title_3d: a 3D title that flies in, catches a light sweep and settles with a slow sway.
+     Latin text uses real extruded glyphs (bevelled); Bangla and any other script use shaped "slab" text.
+     data: {text, subtitle, font: "Poppins"|"Anton"|..., color, side, depth: 0.1..0.6, metal: 0..1,
+            intro: rise|flip|spin|zoom|drop, y: 0..1, width: 0..1, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, lights, run, ease, seg, clamp, lerp, fontsReady, isBangla, slabText, ttfText, label, ready } from "/__mg/three-kit.js";
+const d = D({ text: "MAKE IT POP", subtitle: "", font: "Poppins", color: "#ffffff", side: "", depth: 0.28, metal: 0.25,
+              intro: "rise", y: 0.42, width: 0.84, duration: 3.5, accent: "#FFE14D" });
+document.getElementById("stage").dataset.duration = d.duration;
+
+ready((async () => {
+  const st = stage({ fov: 30 });
+  const { scene, camera } = st;
+  camera.position.set(0, 0, 12);
+  const L = lights(scene, { rim: d.accent, rimIntensity: 3 });
+  await fontsReady([`900 100px "${d.font}"`, `700 100px "Hind Siliguri"`, `600 100px "Poppins"`]);
+
+  const root = new THREE.Group();
+  scene.add(root);
+  const lines = String(d.text).split("\n");
+  let title = null;
+  if (lines.length === 1 && !isBangla(d.text)) {
+    title = await ttfText(d.text, { family: d.font, depth: d.depth, bevel: 0.025, color: d.color, side: d.side || null, metal: d.metal });
+  }
+  if (!title) title = slabText(d.text, { height: lines.length, depth: d.depth, color: d.color, side: d.side || null,
+                                         family: d.font, metal: d.metal, renderer: st.renderer });
+  root.add(title);
+  let sub = null;
+  if (d.subtitle) {
+    sub = label(d.subtitle, { height: 0.46, color: "#ffffff", weight: 600, renderer: st.renderer });
+    sub.position.y = -(title.userData.height / 2 + 0.42);
+    root.add(sub);
+  }
+  const vw = view(camera, 12);
+  const s = (d.width * vw.w) / Math.max(title.userData.width, sub ? sub.userData.width : 0, 1e-3);
+  const base = Math.min(s, vw.h * 0.35 / Math.max(1, lines.length * 0.6));
+  const y0 = (0.5 - d.y) * vw.h;
+
+  // light sweep: a narrow bright light crossing the face
+  const glint = new THREE.SpotLight(0xffffff, 0, 30, 0.12, 0.6);
+  glint.position.set(-8, 2, 10);
+  scene.add(glint, glint.target);
+
+  const D0 = d.duration, tIn = Math.min(0.85, D0 * 0.3), tOut = Math.max(tIn + 0.2, D0 - 0.45);
+  run(st, (t) => {
+    const pIn = ease.out(seg(t, 0, tIn));
+    const pBack = ease.back(seg(t, 0, tIn), 1.4);
+    const pOut = ease.in(seg(t, tOut, D0));
+    let rx = 0, ry = 0, rz = 0, y = y0, sc = 1;
+    switch (d.intro) {
+      case "flip": rx = lerp(-Math.PI / 2, 0, pBack); break;
+      case "spin": ry = lerp(-Math.PI * 1.2, 0, pIn); sc = lerp(0.6, 1, pIn); break;
+      case "zoom": sc = lerp(0.05, 1, pBack); rx = lerp(0.6, 0, pIn); break;
+      case "drop": y = lerp(y0 + vw.h * 0.7, y0, ease.back(seg(t, 0, tIn), 2.2)); break;
+      default: y = lerp(y0 - vw.h * 0.6, y0, pIn); rx = lerp(0.7, 0, pIn);
+    }
+    const idle = seg(t, tIn, tOut);
+    ry += Math.sin(idle * Math.PI) * 0.3 - 0.2;      // a standing tilt shows the depth
+    rx += 0.14 + Math.sin(t * 1.3) * 0.03;
+    y += pOut * vw.h * 0.7;
+    rx -= pOut * 0.8;
+    root.position.y = y;
+    root.rotation.set(rx, ry, rz);
+    root.scale.setScalar(base * sc);
+    if (sub) sub.material.opacity = clamp(seg(t, tIn * 0.7, tIn + 0.3) * (1 - pOut));
+    const g = seg(t, tIn * 0.9, tIn + 0.9);
+    glint.intensity = g > 0 && g < 1 ? 900 * Math.sin(g * Math.PI) : 0;
+    glint.target.position.set(lerp(-vw.w * 0.6, vw.w * 0.6, g), y, 0);
+  }, D0);
+})());
+</script></body></html>

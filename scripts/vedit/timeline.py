@@ -124,6 +124,14 @@ class Clip(_Model):
     reverse: bool = False
     smooth: Optional[Literal["interpolate", "blend"]] = None   # slow motion: motion-interpolated or blended frames
     redact: list[dict[str, Any]] = Field(default_factory=list)  # [{x, y, w, h (source px), mode blur|pixelate|delogo, start?, end?}]
+                                             # or tracked: [{track: id, mode, shape: box|ellipse, pad: 0.15}]
+    # phase 4 VFX, all in source space (references/vfx.md)
+    subject: Optional[dict[str, Any]] = None   # person cut-out: {background: "blur:14"|"#hex"|"image:<path>"|"darken:0.5"|
+                                               #   "desaturate", outline: {color, width}, glow: {color, size}, above: <layer>}
+    dof: Optional[dict[str, Any]] = None       # fake depth of field: {focus: 0..1 (1 = nearest), range: 0.15, blur: 10,
+                                               #   pull: [[clip-local s, focus], ...]}
+    screen: list[dict[str, Any]] = Field(default_factory=list)   # planar inserts: [{track: id, media: path, fit: cover|stretch,
+                                               #   keep_light: 0..1, start?, end?}] or a request {corners, at, media}
     label: str = ""                          # "hook", "take 3", "broll: city"
 
     @property
@@ -137,8 +145,8 @@ class Clip(_Model):
 
 class MGSpec(_Model):
     """A motion graphic to be rendered by one of the engines."""
-    engine: Literal["auto", "html", "hyperframes", "remotion", "pil"] = "auto"
-    template: Optional[str] = None           # name under mg/templates
+    engine: Literal["auto", "html", "hyperframes", "remotion", "pil", "blender"] = "auto"
+    template: Optional[str] = None           # name under mg/templates (or blender/ for engine=blender)
     file: Optional[str] = None               # custom composition written for this edit
     data: dict[str, Any] = Field(default_factory=dict)
     width: Optional[int] = None
@@ -162,6 +170,7 @@ class Overlay(_Model):
     anchor: Optional[Anchor] = None
     enabled: bool = True
     fx: Optional[str] = None                 # id of the CustomFX that produced `path`
+    attach: Optional[dict[str, Any]] = None  # follow a track: {track: id, offset: [x, y] half-canvas units, smooth: s}
     label: str = ""
 
 
@@ -295,6 +304,17 @@ class CustomFX(_Model):
     label: str = ""
 
 
+class Track(_Model):
+    """Motion measured on a source (vedit vfx track/faces/screen): samples live in `file` (JSON)."""
+    id: str
+    source: str
+    kind: Literal["object", "face", "planar"] = "object"
+    t0: float                                # source seconds covered
+    t1: float
+    file: str                                # edit/vfx/tracks/<id>.json
+    label: str = ""
+
+
 class Marker(_Model):
     """A note on the timeline: carried into hand-offs (NLE markers, chapters, to-dos) and the Studio."""
     id: str
@@ -369,6 +389,7 @@ class Edit(_Model):
     output: Output = Field(default_factory=Output)
     custom_fx: list[CustomFX] = Field(default_factory=list)
     markers: list[Marker] = Field(default_factory=list)
+    tracks: list[Track] = Field(default_factory=list)          # vfx tracks (faces, objects, planes)
     knobs: dict[str, Any] = Field(default_factory=dict)       # Studio tuning values (presets/knobs.json)
     revision: int = 0                                         # bumped on every save (Studio sync)
     notes: str = ""

@@ -17,6 +17,11 @@ vedit is MIT-licensed. It builds on these projects; their licences apply to thei
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | downloading linked videos | Unlicense | inside claude-real-video's venv |
 | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), pyannote segmentation 3.0, 3D-Speaker ERes2Net | speaker diarization models | Apache-2.0 / MIT | downloaded on first use (asked) |
 | [OpenCV Zoo YuNet](https://github.com/opencv/opencv_zoo) | face detection | MIT | downloaded on first use |
+| [OpenCV Zoo VitTrack](https://github.com/opencv/opencv_zoo/tree/main/models/object_tracking_vittrack) | object tracking (with OpenCV optical flow) | Apache-2.0 | downloaded on first use (0.7 MB) |
+| [MODNet](https://github.com/ZHKKKe/MODNet) by Ke et al., ONNX export by [Xenova](https://huggingface.co/Xenova/modnet) | person matting (cut-outs, text behind people, background swap) | Apache-2.0 | downloaded when asked (26 MB) |
+| [Depth-Anything-V2-Small](https://github.com/DepthAnything/Depth-Anything-V2), ONNX by [onnx-community](https://huggingface.co/onnx-community/depth-anything-v2-small) | depth (3D photos, depth of field); only the Small model (the larger ones are non-commercial) | Apache-2.0 | downloaded when asked (27 MB) |
+| [BiRefNet](https://github.com/ZhengPeng7/BiRefNet) lite, ONNX by [onnx-community](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) | object cut-outs for stills | MIT | optional download (224 MB) |
+| [Blender](https://www.blender.org) | optional 3D renders (templates in `blender/`) | GPL (separate app) | run as a subprocess; never bundled |
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) / Silero VAD | transcription, no-speech gate | MIT | core dependency |
 | [vtracer](https://github.com/visioncortex/vtracer) | icon vectorizing | MIT | isolated venv on first use |
 | [GSAP](https://gsap.com), [three.js](https://threejs.org), [lottie-web](https://github.com/airbnb/lottie-web) | motion graphics runtime | GSAP standard licence (free), MIT, MIT | loaded from CDNs / npm |

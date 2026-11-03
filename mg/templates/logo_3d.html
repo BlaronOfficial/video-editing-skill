@@ -1,0 +1,117 @@
+<!doctype html>
+<!-- logo_3d: a logo with real thickness spins in, catches a light sweep and floats. SVG logos are extruded
+     path by path in their own fill colours; PNGs become a die-cut slab; no logo -> the brand name as 3D text.
+     data: {logo: "C:/path/logo.svg|png", text: "BRAND", tagline, depth: 0.05..0.5, side: "#hex",
+            spin: turn|flip|none, y: 0..1, width: 0..1, accent, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, lights, run, ease, seg, clamp, lerp, fontsReady, slabText, label, mediaUrl,
+         loadTexture, softDisc, ready } from "/__mg/three-kit.js";
+const d = D({ logo: "", text: "BRAND", tagline: "", depth: 0.18, side: "#c9ccd4", spin: "turn", y: 0.45, width: 0.55,
+              accent: "#FFE14D", duration: 3 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+async function svgLogo(url) {
+  const { SVGLoader } = await import("three/addons/loaders/SVGLoader.js");
+  const data = await new SVGLoader().loadAsync(url);
+  const g = new THREE.Group();
+  const sideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(d.side), metalness: 0.85, roughness: 0.22 });
+  for (const path of data.paths) {
+    const fill = path.userData?.style?.fill;
+    if (!fill || fill === "none") continue;
+    const front = new THREE.MeshStandardMaterial({ color: new THREE.Color().setStyle(fill), metalness: 0.15, roughness: 0.35 });
+    for (const shape of SVGLoader.createShapes(path)) {
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.12,
+                                                     bevelSegments: 3, curveSegments: 16 });
+      g.add(new THREE.Mesh(geo, [front, sideMat]));
+    }
+  }
+  if (!g.children.length) throw new Error("no filled paths in the SVG");
+  const box = new THREE.Box3().setFromObject(g);
+  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const k = 1 / Math.max(size.x, size.y);
+  g.children.forEach((m) => { m.geometry.translate(-c.x, -c.y, -c.z); });
+  g.scale.set(k, -k, k * d.depth * Math.max(size.x, size.y) / Math.max(size.z, 1e-3));   // SVG y points down
+  const outer = new THREE.Group();
+  outer.add(g);
+  outer.userData = { width: size.x * k, height: size.y * k };
+  return outer;
+}
+
+async function pngLogo(path, renderer) {
+  const tex = await loadTexture(path, renderer);
+  const ar = tex.image.width / tex.image.height;
+  const w = ar >= 1 ? 1 : ar, h = ar >= 1 ? 1 / ar : 1;
+  const geo = new THREE.PlaneGeometry(w, h);
+  const g = new THREE.Group();
+  const n = 22;
+  for (let i = n; i >= 1; i--) {
+    const m = new THREE.MeshStandardMaterial({ map: tex, color: new THREE.Color(d.side).multiplyScalar(0.55 + 0.25 * (1 - i / n)),
+                                               transparent: true, alphaTest: 0.4, metalness: 0.7, roughness: 0.3 });
+    const p = new THREE.Mesh(geo, m);
+    p.position.z = -d.depth * 0.6 * (i / n);
+    g.add(p);
+  }
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.4, roughness: 0.35 })));
+  g.userData = { width: w, height: h };
+  return g;
+}
+
+ready((async () => {
+  const st = stage({ fov: 30 });
+  const { scene, camera, renderer } = st;
+  camera.position.set(0, 0, 12);
+  lights(scene, { rim: d.accent, rimIntensity: 3 });
+  await fontsReady([`900 100px "Poppins"`, `600 100px "Poppins"`]);
+  let logo = null;
+  try {
+    if (d.logo && /\.svg$/i.test(d.logo)) logo = await svgLogo(mediaUrl(d.logo));
+    else if (d.logo) logo = await pngLogo(d.logo, renderer);
+  } catch (e) { console.warn("logo fallback:", e?.message || e); }
+  if (!logo) logo = slabText(d.text, { height: 0.42, depth: d.depth * 0.6, renderer, color: "#ffffff", side: d.side });
+  const root = new THREE.Group();
+  const spinner = new THREE.Group();
+  spinner.add(logo);
+  root.add(spinner);
+  scene.add(root);
+  const vw = view(camera, 12);
+  const base = d.width * Math.min(vw.w, vw.h) / Math.max(logo.userData.width, logo.userData.height, 1e-3);
+  root.scale.setScalar(base);
+  const y0 = (0.5 - d.y) * vw.h;
+  let tag = null;
+  if (d.tagline) {
+    tag = label(d.tagline, { height: 0.13, weight: 600, renderer });
+    tag.position.y = -(logo.userData.height / 2 + 0.16);
+    root.add(tag);
+  }
+  const glow = softDisc(0.9, { color: d.accent, opacity: 0.0 });
+  glow.position.z = -0.6;
+  root.add(glow);
+  const sweep = new THREE.SpotLight(0xffffff, 0, 30, 0.1, 0.5);
+  sweep.position.set(0, 1, 10);
+  scene.add(sweep, sweep.target);
+
+  const D0 = d.duration, tIn = Math.min(1.1, D0 * 0.4);
+  run(st, (t) => {
+    const p = seg(t, 0, tIn);
+    let ry = 0, rx = 0, sc = 1;
+    if (d.spin === "turn") { ry = lerp(-Math.PI * 2, 0, ease.out(p)); sc = lerp(0.3, 1, ease.back(p, 1.2)); }
+    else if (d.spin === "flip") { rx = lerp(-Math.PI, 0, ease.back(p, 1.1)); }
+    else { sc = lerp(0.85, 1, ease.out(p)); }
+    const idle = Math.max(0, t - tIn);
+    ry += Math.sin(idle * 1.1) * 0.12;
+    root.position.y = y0 + Math.sin(idle * 1.6) * 0.06;
+    spinner.rotation.set(rx, ry, 0);
+    root.scale.setScalar(base * sc);
+    const a = clamp(seg(t, 0, 0.25));
+    logo.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.transparent = true; m.opacity = a; }); });
+    glow.material.opacity = 0.35 * ease.out(seg(t, tIn * 0.6, tIn + 0.4));
+    if (tag) tag.material.opacity = seg(t, tIn * 0.8, tIn + 0.3);
+    const g = seg(t, tIn * 0.8, tIn + 1.0);
+    sweep.intensity = g > 0 && g < 1 ? 1100 * Math.sin(g * Math.PI) : 0;
+    sweep.target.position.set(lerp(-vw.w * 0.5, vw.w * 0.5, g), y0, 0);
+  }, D0);
+})());
+</script></body></html>

@@ -38,6 +38,17 @@ a command exit with code 3 and print `needs_download` (id, size, ETA from measur
 purpose). Ask the owner, then `vedit models get <id>`; an interrupted download resumes where it stopped.
 `vedit models list` shows everything known. `config models.policy auto` skips the asking.
 
+| Model | Size | For | Licence |
+|---|---|---|---|
+| yunet, vittrack | 0.2 / 0.7 MB (no ask) | faces, object tracking | MIT / Apache-2.0 |
+| speaker_seg, speaker_emb | 7 / 40 MB | who speaks when | MIT / Apache-2.0 |
+| modnet | 26 MB | person cut-outs (text behind people, background swap) | Apache-2.0 |
+| depth_small | 27 MB | 3D photos, depth of field | Apache-2.0 |
+| birefnet_lite | 224 MB | best object cut-outs for stills (optional) | MIT |
+
+CPU inference uses 8 threads by default (faster than all cores on hybrid CPUs); `VEDIT_ORT_THREADS`
+overrides. `vedit vfx check` shows what VFX can run here.
+
 ## Personal data and updates
 `personal/` holds config, secrets, brand kits, styles (incl. learned preferences), CapCut calibration,
 asset index and voices. It is git-ignored, so `vedit update` (= safe `git pull --ff-only` + dependency

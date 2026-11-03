@@ -5,6 +5,7 @@ Engines
   hyperframes `npx hyperframes render` for full HyperFrames projects (MP4, no alpha) - full-screen scenes.
   remotion    mg/remotion project (React). Alpha via ProRes 4444. Remotion licence applies (see README).
   pil         pure-Python fallback for simple shapes/text when Node/Chrome are unavailable.
+  blender     blender/*.py templates or a project bpy script (optional add-on; real 3D light and geometry).
 `auto` -> html for templates and .html files, remotion for .tsx/.jsx, hyperframes for directories with
 hyperframes.json, pil if Chrome is missing.
 """
@@ -187,6 +188,12 @@ def render_overlay(edit: Edit, ov: Overlay, out_dir: Path, *, capcut_alpha: str 
         if not comp.exists():
             raise VeditError(f"Composition not found: {comp}")
         outputs = render_html(comp, stem, width=W, height=H, fps=fps, duration=ov.duration, data=spec.data, formats=formats)
+    elif engine == "blender":
+        from . import blender
+        res = blender.render(spec.file or spec.template, stem, data=spec.data, width=W, height=H, fps=fps,
+                             duration=ov.duration, formats=formats, engine=spec.data.get("engine", "eevee"),
+                             samples=int(spec.data.get("samples", 0)), project_root=out_dir.parent)
+        outputs = [Path(o) for o in res["outputs"]]
     elif engine == "remotion":
         out = render_remotion(Path(spec.file), spec.data.get("composition", "Main"), Path(str(stem) + ".mov"),
                               props=spec.data, width=W, height=H, fps=fps, duration=ov.duration, alpha=spec.alpha)
@@ -233,8 +240,9 @@ def contact_sheet(video: str | Path, out_png: str | Path, *, times: list[float] 
     tmp = Path(out_png).with_suffix("")
     for i, t in enumerate(times):
         frame = Path(f"{tmp}_{i}.png")
+        dec = ["-c:v", "libvpx-vp9"] if str(video).lower().endswith(".webm") else []   # the native vp9 decoder drops alpha
         run([ffmpeg(), "-y", "-v", "error", "-f", "lavfi", "-i", f"color=c={bg}:s={info.width}x{info.height}",
-             "-ss", f"{t:.3f}", "-i", str(video), "-filter_complex", f"[0:v][1:v]overlay=format=auto,scale={width}:-2",
+             "-ss", f"{t:.3f}", *dec, "-i", str(video), "-filter_complex", f"[0:v][1:v]overlay=format=auto,scale={width}:-2",
              "-frames:v", "1", str(frame)])
         tiles.append((t, Image.open(frame)))
     w, h = tiles[0][1].size

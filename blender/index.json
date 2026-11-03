@@ -1,0 +1,5 @@
+{
+  "title_3d":          {"use": "Hero title with real extrusion, bevel and a light sweep (Latin scripts; Bangla -> Three.js title_3d).", "duration": 3.5, "data": {"text": "str", "subtitle": "str", "font": "file in .cache/fonts", "color": "#hex", "side": "#hex", "depth": "0.05..0.6", "bevel": "0..0.05", "metallic": "0..1", "intro": "rise|flip|spin|zoom", "outro": "bool", "glint": "bool", "y": "0..1", "width": "0..1"}},
+  "logo_3d":           {"use": "Brand sting: an SVG logo extruded with its own colours (or a PNG as a thick card), spin-in, light sweep.", "duration": 3.0, "data": {"logo": "abs path .svg|.png", "depth": "0.02..0.4", "side": "#hex", "spin": "turn|flip|none", "tagline": "str", "y": "0..1", "width": "0..1"}},
+  "product_turntable": {"use": "Product hero: a .glb/.obj/.fbx/.stl model or a cut-out photo turning on a studio disc.", "duration": 5.0, "data": {"model": "abs path", "image": "abs path (png cut-out)", "turns": "0.25..2", "accent": "#hex", "floor": "disc|none", "tilt": "deg", "y": "0..1", "width": "0..1"}}
+}

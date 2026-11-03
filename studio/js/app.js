@@ -118,7 +118,8 @@ function renderPanels() {
   });
   if (S.localCards.length) ui.panels.suggestions.prepend(localCards());
   renderKnobs(ui.panels.knobs, { defs: S.library.knobs, values: S.view.knobs || {}, onKnob: (id, value) => commit({ op: "knob", id, value }) });
-  renderInspector(ui.panels.inspector, { sel: S.sel, raw: S.view, baked: S.baked, library: S.library, onOp: commit, onSeek: (t) => player.seek(t) });
+  renderInspector(ui.panels.inspector, { sel: S.sel, raw: S.view, baked: S.baked, library: S.library, onOp: commit, onSeek: (t) => player.seek(t),
+                                         onPick: (n, hint) => player.pickPoints(n, hint), now: () => player.t });
   renderLibrary(ui.panels.library, { library: S.library, raw: S.view, t: player.t, anchorAt, onOp: commit });
   const open = (S.suggestions.items || []).filter((s) => (s.status || "open") === "open").length + S.localCards.length;
   const tab = ui.tabs.querySelector('[data-tab="suggestions"] .count');

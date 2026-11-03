@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- chart_3d: 3D bars grow in with counting values, a slow camera orbit, the highlighted bar glows.
+     data: {title, bars: [{label, value}], unit: "%", prefix: "$", decimals: 0, highlight: index, colors: ["#hex"],
+            accent: "#hex", y: 0..1, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, lights, run, ease, seg, clamp, lerp, fontsReady, label, textCanvas, canvasTexture, softDisc,
+         ready } from "/__mg/three-kit.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+const d = D({ title: "", bars: [{ label: "2023", value: 32 }, { label: "2024", value: 58 }, { label: "2025", value: 91 }],
+              unit: "", prefix: "", decimals: 0, highlight: -1, colors: ["#5b6170"], accent: "#FFE14D", y: 0.5, duration: 4.5 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+ready((async () => {
+  const st = stage({ fov: 32 });
+  const { scene, camera, renderer } = st;
+  lights(scene, { rim: d.accent, rimIntensity: 2.2, shadow: true });
+  await fontsReady([`800 120px "Poppins"`, `700 120px "Poppins"`, `700 120px "Hind Siliguri"`]);
+  const bars = d.bars || [];
+  const n = Math.max(1, bars.length);
+  const maxV = Math.max(...bars.map((b) => Number(b.value) || 0), 1e-6);
+  const hi = d.highlight >= 0 ? d.highlight : bars.reduce((bi, b, i, a) => (Number(b.value) > Number(a[bi].value) ? i : bi), 0);
+  const spacing = 1.25, W = (n - 1) * spacing, H = 3.2;
+  const root = new THREE.Group();
+  scene.add(root);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W + 3, 3.2), new THREE.ShadowMaterial({ opacity: 0.35 }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  root.add(floor);
+  const items = bars.map((b, i) => {
+    const isHi = i === hi;
+    const col = new THREE.Color(isHi ? d.accent : d.colors[i % d.colors.length]);
+    const mat = new THREE.MeshStandardMaterial({ color: col, metalness: 0.25, roughness: 0.35,
+                                                 emissive: isHi ? col.clone().multiplyScalar(0.25) : new THREE.Color(0) });
+    const geo = new RoundedBoxGeometry(0.8, 1, 0.8, 4, 0.08);
+    geo.translate(0, 0.5, 0);
+    const bar = new THREE.Mesh(geo, mat);
+    bar.castShadow = true;
+    bar.position.x = -W / 2 + i * spacing;
+    root.add(bar);
+    const name = label(String(b.label ?? ""), { height: 0.3, weight: 700, renderer });
+    name.position.set(bar.position.x, 0.2, 0.72);    // in front of the bar, above the shadow floor
+    root.add(name);
+    const vc = document.createElement("canvas");      // fixed size: a resized canvas would need a new GPU texture
+    vc.width = 640; vc.height = 200;
+    const vtex = canvasTexture(vc, renderer);
+    const val = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: vtex, transparent: true, depthWrite: false }));
+    root.add(val);
+    let glow = null;
+    if (isHi) { glow = softDisc(1.1, { color: d.accent, opacity: 0 }); glow.rotation.x = -Math.PI / 2; glow.position.set(bar.position.x, 0.01, 0); root.add(glow); }
+    return { b, bar, val, vc, vtex, glow, h: H * (Number(b.value) || 0) / maxV, last: "" };
+  });
+  let title = null;
+  if (d.title) { title = label(d.title, { height: 0.45, weight: 800, renderer }); root.add(title); }
+  const fmt = (v) => `${d.prefix}${Number(v).toLocaleString("en-US", { minimumFractionDigits: d.decimals, maximumFractionDigits: d.decimals })}${d.unit}`;
+  const vw = view(camera, 14);
+  const scale = Math.min(1, (vw.w * 0.86) / (W + 1.6));
+  root.scale.setScalar(scale);
+  root.position.y = (0.5 - d.y) * vw.h - H * scale * 0.45;
+  if (title) title.position.set(0, H + 1.0, 0);
+  const D0 = d.duration;
+  run(st, (t) => {
+    const orbit = lerp(-0.42, 0.3, ease.inOut(seg(t, 0, D0)));
+    camera.position.set(Math.sin(orbit) * 14, 3.2 + root.position.y, Math.cos(orbit) * 14);
+    camera.lookAt(0, root.position.y + H * scale * 0.5, 0);
+    items.forEach((it, i) => {
+      const p = ease.back(seg(t, 0.25 + i * 0.18, 1.25 + i * 0.18), 1.15);
+      const h = Math.max(0.001, it.h * p);
+      it.bar.scale.y = h;
+      const shown = fmt((Number(it.b.value) || 0) * clamp(p));
+      if (shown !== it.last) {
+        const tc = textCanvas(shown, { size: 110, weight: 800, color: "#ffffff" });
+        const ctx = it.vc.getContext("2d");
+        ctx.clearRect(0, 0, 640, 200);
+        const k = Math.min(1, 620 / tc.w, 190 / tc.h);
+        ctx.drawImage(tc.canvas, (640 - tc.w * k) / 2, (200 - tc.h * k) / 2, tc.w * k, tc.h * k);
+        it.vtex.needsUpdate = true;
+        it.val.scale.set(0.42 * 640 / 200, 0.42, 1);
+        it.last = shown;
+      }
+      it.val.position.set(it.bar.position.x, h + 0.35, 0);
+      it.val.quaternion.copy(camera.quaternion);
+      it.val.material.opacity = clamp(p * 3);
+      if (it.glow) it.glow.material.opacity = 0.5 * ease.out(seg(t, 1.3 + i * 0.18, 1.8 + i * 0.18));
+    });
+    if (title) { title.quaternion.copy(camera.quaternion); title.material.opacity = ease.out(seg(t, 0, 0.5)); }
+    const fade = 1 - ease.in(seg(t, D0 - 0.4, D0));
+    root.traverse((o) => { if (o.material && o.material.isMeshStandardMaterial) { o.material.transparent = fade < 1; o.material.opacity = fade; } });
+  }, D0);
+})());
+</script></body></html>

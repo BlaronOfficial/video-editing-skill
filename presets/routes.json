@@ -305,7 +305,7 @@
  "3d": [
   {
    "id": "threejs",
-   "label": "Three.js composition (3D text, logo, particles, product card, camera moves)",
+   "label": "Three.js 3D template or composition (titles incl. Bangla, logos, product, device, particles, fly-through, chart, globe)",
    "requires": [
     "core:mg_renderer"
    ],
@@ -314,11 +314,11 @@
    "speed": 4,
    "licence": "own",
    "privacy": "local",
-   "how": "edit/custom/*.html with window.__seek(t); phase 4 adds 3D templates."
+   "how": "mg templates title_3d / logo_3d / product_spin / device_mockup / particles / camera_flythrough / chart_3d / globe (references/vfx.md); custom: edit/custom/*.html with three-kit.js. Renders ~5 frames/s at 1080x1920, live in the Studio."
   },
   {
    "id": "blender",
-   "label": "Blender headless render",
+   "label": "Blender headless render (real bevels, extrusion, light, product turntables)",
    "requires": [
     "addon:blender"
    ],
@@ -327,7 +327,7 @@
    "speed": 1,
    "licence": "own",
    "privacy": "local",
-   "how": "phase 4: bpy templates; ask before installing Blender."
+   "how": "overlay mg {engine: blender, template: title_3d|logo_3d|product_turntable} or CustomFX kind=blender; `vedit blender render`. Latin text only; ~2 s per frame at 540p here (heroes, not every graphic)."
   },
   {
    "id": "fusion",
@@ -372,6 +372,78 @@
  ],
  "vfx": [
   {
+   "id": "native_track",
+   "label": "Tracking: labels that follow, tracked blur (faces, plates, objects)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit vfx track|faces|blur|attach` (optical flow + VitTrack, YuNet faces); check with `vedit vfx sheet`."
+  },
+  {
+   "id": "native_planar",
+   "label": "Screen / sign replacement (four-corner plane tracking)",
+   "requires": [],
+   "cost": "free",
+   "quality": 4,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit vfx screen --suggest` then `--corners ... --media ...`, or corners picked in the Studio + `vedit vfx prepare`."
+  },
+  {
+   "id": "native_matte",
+   "label": "Person cut-out: text behind the person, background blur / swap, outline, glow",
+   "requires": [
+    "model:modnet"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit vfx subject` (MODNet, ~3 frames/s here); still cut-outs `vedit vfx cutout` (BiRefNet if downloaded)."
+  },
+  {
+   "id": "native_depth",
+   "label": "Depth: 3D photo parallax, depth of field",
+   "requires": [
+    "model:depth_small"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit vfx parallax|dof|dof-image|depth` (Depth-Anything-V2-Small)."
+  },
+  {
+   "id": "native_camera",
+   "label": "Camera FX: whip / zoom-blur transitions, motion blur, handheld drift, shake, stabilize",
+   "requires": [],
+   "cost": "free",
+   "quality": 3,
+   "speed": 5,
+   "licence": "own",
+   "privacy": "local",
+   "how": "transition_in.type whip_left|whip_right|whip_up|whip_down|zoom_blur; effects render motion_blur|handheld|whip|shake."
+  },
+  {
+   "id": "canva_cutout",
+   "label": "Canva background removal (stills)",
+   "requires": [
+    "connector:canva"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "uploads",
+   "how": "Canva remove-background on a still; ask before uploading the owner's photos."
+  },
+  {
    "id": "custom_python",
    "label": "Custom Python FX (numpy/OpenCV per frame -> alpha overlay)",
    "requires": [],
@@ -394,17 +466,6 @@
    "licence": "own",
    "privacy": "local",
    "how": "CustomFX kind=ffmpeg (glitch, grain, vignette, chromatic shift, blur, curves)."
-  },
-  {
-   "id": "native_vfx",
-   "label": "Native tracking / cutout / depth / stabilize",
-   "requires": [],
-   "cost": "free",
-   "quality": 4,
-   "speed": 2,
-   "licence": "own",
-   "privacy": "local",
-   "how": "phase 4 (vedit vfx ...)."
   },
   {
    "id": "capcut_vfx",

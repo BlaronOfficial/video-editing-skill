@@ -739,6 +739,10 @@ def build_parser() -> argparse.ArgumentParser:
     for mod in (capabilities, routes, models, modes, knobs, suggest, studio, studio_local, learn, custom, extend, sound,
                 watch, writing, inbox, sources, handoff, toolkit):
         mod.register_cli(sp)
+    from . import blender
+    from .vfx import cli as vfx_cli
+    vfx_cli.register_cli(sp)
+    blender.register_cli(sp)
     extensions.register_cli(sp)
     return ap
 

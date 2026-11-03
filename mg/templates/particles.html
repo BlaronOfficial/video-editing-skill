@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- particles: atmosphere and celebration layers, fully deterministic (positions are a function of time).
+     data: {mode: dust|bokeh|snow|stars|sparks|confetti, colors: ["#hex"], count, speed: 0.2..3, seed,
+            burst_at: seconds (sparks / confetti burst moment), x: 0..1, y: 0..1 (burst origin), size: 0.5..3, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, run, ease, seg, clamp, rand, canvasTexture, ready } from "/__mg/three-kit.js";
+const d = D({ mode: "dust", colors: ["#ffffff", "#FFE14D"], count: 0, speed: 1, seed: 7, burst_at: 0.2, x: 0.5, y: 0.45,
+              size: 1, duration: 4 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+const DEFAULTS = { dust: 260, bokeh: 60, snow: 420, stars: 500, sparks: 320, confetti: 260 };
+
+function sprite(kind) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const x = c.getContext("2d");
+  if (kind === "bokeh") {
+    const g = x.createRadialGradient(64, 64, 40, 64, 64, 62);
+    g.addColorStop(0, "rgba(255,255,255,.55)"); g.addColorStop(0.85, "rgba(255,255,255,.75)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI * 2); x.fill();
+  } else if (kind === "stars") {
+    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.15, "rgba(255,255,255,.8)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    x.strokeStyle = "rgba(255,255,255,.7)"; x.lineWidth = 3;
+    x.beginPath(); x.moveTo(64, 8); x.lineTo(64, 120); x.moveTo(8, 64); x.lineTo(120, 64); x.stroke();
+  } else {
+    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.35, "rgba(255,255,255,.6)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  }
+  return canvasTexture(c);
+}
+
+ready((async () => {
+  const st = stage({ fov: 50, env: false });
+  const { scene, camera } = st;
+  camera.position.set(0, 0, 10);
+  const vw = view(camera, 10);
+  const R = rand(d.seed);
+  const n = d.count || DEFAULTS[d.mode] || 250;
+  const cols = (d.colors && d.colors.length ? d.colors : ["#ffffff"]).map((c) => new THREE.Color(c));
+  const P = Array.from({ length: n }, () => ({ a: R(), b: R(), c: R(), e: R(), f: R(), g: R(), col: cols[Math.floor(R() * cols.length)] }));
+  const ox = (d.x - 0.5) * vw.w, oy = (0.5 - d.y) * vw.h;
+  const D0 = d.duration, sp = d.speed;
+
+  if (d.mode === "confetti") {
+    const geo = new THREE.PlaneGeometry(0.16 * d.size, 0.09 * d.size);
+    const mat = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.5, metalness: 0.2, transparent: true });
+    const mesh = new THREE.InstancedMesh(geo, mat, n);
+    P.forEach((p, i) => mesh.setColorAt(i, p.col));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    sun.position.set(2, 3, 5);
+    mesh.frustumCulled = false;                      // instances fly far from the origin
+    scene.add(mesh, new THREE.AmbientLight(0xffffff, 1.2), sun);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s3 = new THREE.Vector3(1, 1, 1), v = new THREE.Vector3();
+    run(st, (t) => {
+      const tt = Math.max(0, t - d.burst_at) * sp;
+      P.forEach((p, i) => {
+        const ang = p.a * Math.PI * 2, up = 0.55 + p.b * 0.9;
+        const v0 = (4 + p.c * 6) * sp;
+        const drag = 1 - Math.exp(-tt * 1.6);
+        const x = ox + Math.cos(ang) * v0 * 0.6 * drag + Math.sin(tt * 3 + p.e * 9) * 0.25 * clamp(tt);
+        const y = oy + up * v0 * 0.55 * drag - 0.9 * tt * tt * 0.5 - tt * 0.6;
+        const z = (p.f - 0.5) * 4;
+        e.set(tt * (4 + p.e * 8), tt * (3 + p.f * 6), p.g * 6);
+        q.setFromEuler(e);
+        v.set(x, y, z);
+        m4.compose(v, q, s3.setScalar(t < d.burst_at ? 0.0001 : 1));
+        mesh.setMatrixAt(i, m4);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mat.opacity = 1 - ease.in(seg(t, D0 - 0.5, D0));
+    }, D0);
+    return;
+  }
+
+  const pos = new Float32Array(n * 3), colA = new Float32Array(n * 3), sizes = new Float32Array(n);
+  P.forEach((p, i) => { colA.set([p.col.r, p.col.g, p.col.b], i * 3); });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colA, 3));
+  const base = { dust: 0.07, bokeh: 0.9, snow: 0.11, stars: 0.13, sparks: 0.09 }[d.mode] || 0.08;
+  const mat = new THREE.PointsMaterial({ size: base * d.size, map: sprite(d.mode), vertexColors: true, transparent: true,
+                                         depthWrite: false, blending: d.mode === "snow" ? THREE.NormalBlending : THREE.AdditiveBlending,
+                                         sizeAttenuation: true });
+  scene.add(new THREE.Points(geo, mat));
+  const wrap = (v, lo, hi) => lo + ((((v - lo) % (hi - lo)) + (hi - lo)) % (hi - lo));
+  run(st, (t) => {
+    const W = vw.w * 1.2, H = vw.h * 1.2;
+    P.forEach((p, i) => {
+      let x, y, z;
+      if (d.mode === "sparks") {
+        const tt = Math.max(0, t - d.burst_at) * sp;
+        const ang = p.a * Math.PI * 2, v0 = (2 + p.b * 7);
+        const life = clamp(1 - tt / (0.6 + p.c * 1.6));
+        x = ox + Math.cos(ang) * v0 * (1 - Math.exp(-tt * 2.2)) * 0.8;
+        y = oy + Math.sin(ang) * v0 * (1 - Math.exp(-tt * 2.2)) * 0.8 - 1.4 * tt * tt;
+        z = (p.e - 0.5) * 2;
+        if (t < d.burst_at || life <= 0) { x = 9999; }
+      } else if (d.mode === "snow") {
+        x = wrap((p.a - 0.5) * W + Math.sin(t * 0.8 + p.e * 10) * 0.3, -W / 2, W / 2);
+        y = wrap((p.b - 0.5) * H - t * (0.5 + p.c * 0.7) * sp, -H / 2, H / 2);
+        z = (p.f - 0.5) * 6;
+      } else if (d.mode === "stars") {
+        x = (p.a - 0.5) * W; y = (p.b - 0.5) * H; z = (p.f - 0.5) * 4;
+      } else {             // dust, bokeh: slow drift upwards with sway
+        x = wrap((p.a - 0.5) * W + Math.sin(t * 0.3 * sp + p.e * 20) * 0.6, -W / 2, W / 2);
+        y = wrap((p.b - 0.5) * H + t * (0.08 + p.c * 0.2) * sp, -H / 2, H / 2);
+        z = d.mode === "bokeh" ? -2 + (p.f - 0.5) * 6 : (p.f - 0.5) * 8;
+      }
+      pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      const tw = d.mode === "stars" ? 0.4 + 0.6 * Math.abs(Math.sin(t * (1 + p.c * 3) + p.e * 10)) : 1;
+      colA[i * 3] = p.col.r * tw; colA[i * 3 + 1] = p.col.g * tw; colA[i * 3 + 2] = p.col.b * tw;
+    });
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.color.needsUpdate = true;
+    mat.opacity = (d.mode === "bokeh" ? 0.5 : 0.9) * ease.out(seg(t, 0, 0.4)) * (1 - ease.in(seg(t, D0 - 0.5, D0)));
+  }, D0);
+})());
+</script></body></html>

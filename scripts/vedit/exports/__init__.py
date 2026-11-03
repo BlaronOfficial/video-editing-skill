@@ -289,7 +289,10 @@ def flatten(edit: Edit, *, overlay_files: dict[str, str] | None = None, graphics
         fx = [n for n, on in (("stabilized", c.stabilize is not None), (f"denoise {c.denoise}", bool(c.denoise)),
                               ("reversed", c.reverse), (f"{c.smooth} slow motion", bool(c.smooth)),
                               ("black bars cropped", bool(c.src_crop)), ("360 reframed", bool(c.projection)),
-                              (f"{len(c.redact)} redaction(s)", bool(c.redact))) if on]
+                              (f"{len(c.redact)} redaction(s)", bool(c.redact)),
+                              ("tracked blur", any(r.get("track") for r in c.redact)),
+                              (f"person cut-out ({(c.subject or {}).get('background') or 'layer'})", bool(c.subject)),
+                              ("depth of field", bool(c.dof)), (f"{len(c.screen)} screen replacement(s)", bool(c.screen))) if on]
         if s.color and (s.color.get("hdr") or s.color.get("bt2020_sdr")):
             fx.append("HDR source tone-mapped to SDR in vedit (the editor shows the original HDR)")
         if s.lut:

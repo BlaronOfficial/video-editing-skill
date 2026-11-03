@@ -53,7 +53,10 @@ centre, **+y is up** (`y: -0.42` = lower third of a vertical frame). Full JSON s
 {start_scale, end_scale, ease linear|in|out|inout|hold, anchor_x, anchor_y}, `crop` (auto-reframe keys,
 written by `vedit reframe`), `transition_in` (drawn across the cut from handles; never changes timing),
 `fade_in/out`, `audio_fade_in/out`, `color` (per-clip grade), `capcut_filter`,
-`capcut_animation_in/out`, `label`.
+`capcut_animation_in/out`, `label`. VFX (source space, `references/vfx.md`): `redact[]` entries with
+`track` (tracked blur), `screen[]` (planar inserts), `subject` {background, outline, glow, above} (person
+cut-out), `dof` {focus auto|0..1, range, blur, pull}. Transitions also take whip_left|whip_right|whip_up|
+whip_down|zoom_blur; a clip with no source handle holds its edge frame.
 
 **broll[]** - like main clips plus required `start`. Muted. `fit`, `transform` (PiP: scale 0.45, x 0.45, y 0.5).
 
@@ -73,7 +76,10 @@ pop|fade|slide}, `transform`, `capcut_intro/outro/loop` (CapCut text animation n
 **audio[]** - `source`, `start`, `src_in`, `src_out`, `volume`, `role` music|sfx|vo|ambience, `duck`
 (default true for music/ambience), `fade_in/out`, `loop`.
 
-**effects[]** - `start`, `duration`, `render` (flash|shake|zoom_pulse|blur|glitch|rgb_split|vignette|
+**tracks[]** - written by `vedit vfx track|faces|screen`: `{id, source, kind object|face|planar, t0, t1, file}`.
+Overlays take `attach` {track, offset [x, y], point center|top|bottom, smooth} to follow one.
+
+**effects[]** - `start`, `duration`, `render` (motion_blur|handheld|whip|flash|shake|zoom_pulse|blur|glitch|rgb_split|vignette|
 film_grain|bw) and/or `capcut` (+ `capcut_params`), `intensity`.
 
 **color** - `preset` (warm_cinematic, moody, clean, teal_orange, bw, vintage, pastel, vibrant, cool,

@@ -75,7 +75,14 @@ def path_of(model_id: str) -> Path:
     return models_dir() / (m.extracted or m.dest)
 
 
+def _load_optional() -> None:
+    """Feature modules register their models on import; load them so listings are complete."""
+    from .vfx import depth, matte, track  # noqa: F401
+
+
 def _get(model_id: str) -> Model:
+    if model_id not in MODELS:
+        _load_optional()
     if model_id not in MODELS:
         raise VeditError(f"Unknown model '{model_id}'. Known: {', '.join(sorted(MODELS))}")
     return MODELS[model_id]
@@ -190,6 +197,7 @@ def _extract(archive: Path, kind: str, dest: Path) -> None:
 
 
 def status_all() -> list[dict]:
+    _load_optional()
     return [info(mid) for mid in sorted(MODELS)]
 
 

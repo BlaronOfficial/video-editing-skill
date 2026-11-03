@@ -66,6 +66,8 @@ Edit `edit/edit.json` directly (schema: `references/edit-json.md`, or `vedit pla
 - B-roll: `broll` clips with `start` (timeline seconds). Use `vedit assets search "<words>" --kind broll`.
 - Music/SFX/VO: `audio` clips (`role: music|sfx|vo|ambience`). Music ducks under speech automatically.
   SFX: library, CapCut library (screen control) or `vedit sfx whoosh --out edit/assets/sfx/whoosh1.wav`.
+- VFX and 3D: 3D templates, tracked labels and blur, screen replacement, person cut-outs, depth, whip cuts
+  (`references/vfx.md`). Look at `vedit vfx sheet` and a preview before calling them done.
 - Grade: `color.preset` (render) and `color.capcut_filter` (CapCut). Effects: `effects` with `render`
   (our approximation) and/or `capcut` (CapCut effect name, see `vedit capcut resources scene_effect`).
 - Apply the style profile: pacing (`max_pause`, punch-in rhythm), caption style, palette, SFX density,

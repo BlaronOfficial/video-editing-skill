@@ -99,7 +99,7 @@ export function renderKnobs(root, { defs, values, onKnob }) {
 
 const LIST_NAME = { main: "Clip", broll: "B-roll", overlays: "Graphic", texts: "Text", audio: "Sound" };
 
-export function renderInspector(root, { sel, raw, baked, library, onOp, onSeek }) {
+export function renderInspector(root, { sel, raw, baked, library, onOp, onSeek, onPick, now }) {
   if (!sel) {
     root.replaceChildren(h("p", { class: "empty-note" }, "Select a clip, graphic, text or sound on the timeline to edit it here."));
     return;
@@ -136,12 +136,13 @@ export function renderInspector(root, { sel, raw, baked, library, onOp, onSeek }
     kids.push(num("Speed", rawItem.speed ?? 1, (v) => ({ speed: v || 1 }), 0.05), num("Volume", rawItem.volume ?? 1, (v) => ({ volume: v ?? 1 }), 0.05));
     kids.push(num("Zoom from", rawItem.zoom?.start_scale ?? 1, (v) => ({ zoom: { ...(rawItem.zoom || {}), start_scale: v ?? 1 } }), 0.01),
               num("Zoom to", rawItem.zoom?.end_scale ?? 1, (v) => ({ zoom: { ...(rawItem.zoom || {}), end_scale: v ?? 1 } }), 0.01));
-    const trSel = h("select", { id: "ins-transition" }, h("option", { value: "" }, "Cut"), ...["fade", "fade_black", "flash", "slide_left", "slide_up", "zoom_in", "push", "circle", "blur", "glitch"].map((t) => h("option", { value: t, selected: rawItem.transition_in?.type === t }, t.replaceAll("_", " "))));
+    const trSel = h("select", { id: "ins-transition" }, h("option", { value: "" }, "Cut"), ...["fade", "fade_black", "flash", "slide_left", "slide_up", "zoom_in", "push", "circle", "blur", "glitch", "whip_left", "whip_right", "whip_up", "zoom_blur"].map((t) => h("option", { value: t, selected: rawItem.transition_in?.type === t }, t.replaceAll("_", " "))));
     trSel.addEventListener("change", () => upd({ transition_in: trSel.value ? { type: trSel.value, duration: rawItem.transition_in?.duration || 0.3 } : null }));
     kids.push(h("div", { class: "field" }, h("label", { for: "ins-transition" }, "Transition in"), trSel));
     kids.push(h("div", { class: "row" },
       h("button", { class: "btn small", type: "button", onclick: () => onOp({ op: "split", clip: id, at: Math.min(rawItem.src_out - 0.1, Math.max(rawItem.src_in + 0.1, (item.src_in + item.src_out) / 2)) }) }, "Split in half"),
       h("button", { class: "btn small danger", type: "button", onclick: () => onOp({ op: "delete_clip", clip: id }) }, "Delete clip")));
+    kids.push(...vfxControls(rawItem, item, list, { upd, onOp, onPick, now }));
   } else {
     kids.push(num("Length (s)", rawItem.duration, (v) => ({ duration: v ?? rawItem.duration }), 0.05));
     if (!rawItem.anchor) kids.push(num("Start (s)", rawItem.start, (v) => ({ start: v ?? 0 }), 0.05));
@@ -204,3 +205,39 @@ export function renderLibrary(root, { library, raw, t, anchorAt, onOp }) {
 }
 
 export { clone };
+
+
+// ------------------------------------------------------------------ clip VFX (rendered by the engine)
+
+function vfxControls(rawItem, item, list, { upd, onOp, onPick, now }) {
+  const sub = rawItem.subject || {};
+  const out = [h("h3", { class: "panel-h" }, "Effects on this clip"),
+    h("p", { class: "muted" }, "Rendered by the engine (person cut-outs, tracking, depth). The preview here shows the plain clip; a preview render shows the result.")];
+  const bg = h("select", { id: "ins-subject-bg" }, ...[["", "Keep the background"], ["blur:14", "Blur the background"], ["darken:0.5", "Darken the background"],
+    ["desaturate", "Black and white background"], ["#101014", "Plain dark background"]].map(([v, l]) => h("option", { value: v, selected: (sub.background || "") === v }, l)));
+  bg.addEventListener("change", () => upd({ subject: bg.value || sub.above !== undefined ? { ...sub, background: bg.value || undefined } : null }));
+  out.push(h("div", { class: "field" }, h("label", { for: "ins-subject-bg" }, "Person cut-out"), bg));
+  const behind = h("input", { type: "checkbox", id: "ins-subject-above", checked: sub.above !== undefined });
+  behind.addEventListener("change", () => {
+    const next = { ...sub };
+    if (behind.checked) next.above = 1; else delete next.above;
+    upd({ subject: Object.keys(next).length ? next : null });
+  });
+  out.push(h("div", { class: "field check" }, behind, h("label", { for: "ins-subject-above" }, "Graphics on layer 0 go behind the person")));
+  const dof = h("input", { type: "range", id: "ins-dof", min: 0, max: 1, step: 0.05, value: rawItem.dof ? rawItem.dof.focus : 0 });
+  dof.addEventListener("change", () => upd({ dof: +dof.value > 0 ? { focus: +dof.value, range: rawItem.dof?.range || 0.25, blur: rawItem.dof?.blur || 10 } : null }));
+  out.push(h("div", { class: "field" }, h("label", { for: "ins-dof" }, "Depth of field (0 = off, 1 = focus on the nearest)"), dof));
+  const nScreens = (rawItem.screen || []).length;
+  out.push(h("div", { class: "row" },
+    h("button", { class: "btn small", type: "button", onclick: () => onOp({ op: "request", what: "vfx", target: rawItem.id,
+      text: `Blur every face in clip ${rawItem.id} (tracked, follows them).` }) }, "Blur faces"),
+    h("button", { class: "btn small", type: "button", onclick: async () => {
+      if (!onPick) return;
+      const pts = await onPick(4, "Click the four corners of the screen or sign");
+      if (!pts) return;
+      const at = now ? now() : item.start || 0;
+      onOp([{ op: "update", list, id: rawItem.id, fields: { screen: [...(rawItem.screen || []), { canvas_corners: pts, timeline_at: +at.toFixed(3), media: "" }] } },
+            { op: "request", what: "vfx", target: rawItem.id, text: `Replace the screen picked at ${at.toFixed(2)}s in clip ${rawItem.id}: track it and ask me which image or video goes on it.` }]);
+    } }, nScreens ? `Replace another screen (${nScreens})` : "Replace a screen")));
+  return out;
+}

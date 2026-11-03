@@ -138,7 +138,7 @@ pipelines; standalone free core, everything paid or proprietary optional. Full p
 | Studio | Claude Artifact only (one per owner, projects as db collections), live preview only, all edit tools, in-page Claude (`sample`), Send to Claude (comments), live link via `host:vedit` MCP in the Claude desktop app |
 | Hand-offs | CapCut asked at intake; DaVinci (free import package, Studio live, screen control, learn), Premiere/FCP/any NLE, LosslessCut (phase 3) |
 | Web AI | Owner's logged-in services (Gemini, ChatGPT, Canva, Firefly, Ideogram, ...) used opportunistically with provenance; never log in; ask before credits/bulk |
-| VFX / 3D | Three.js, Blender (installed: 5.2), Fusion (Studio), Higgsfield; tracking, cutout, depth (phase 4) |
+| VFX / 3D | Three.js, Blender (installed: 5.2), Fusion (Studio), Higgsfield; tracking, cutout, depth (phase 4, built 2026-11-04) |
 | Sound / eyes | earshot full (kits + ears), claude-real-video watching, speakers, memory, link ingest (phase 2) |
 | Writing pass | English only (from blader/humanizer MIT rules; humanizer-cli was a malware lure, not used) |
 | Learning | Studio decisions, editor diffs, chat rules, route outcomes, YouTube analytics (phase 5) |
@@ -268,3 +268,55 @@ Verified (`tests/test_port.py`: 50/50; test_v2 22/22, test_phase2 --render 24/24
 - Sync: 200 ppm injected drift found as 188 ppm, start offset within 1 ms; the replaced recorder track
   lines up at both ends (1 ms, ~20 ppm residual). Speech-aware cuts land only on sentence ends or long
   pauses. Grid, audiogram, Ken Burns, cached batch (second run all cached), HTML report.
+
+### Phase 4 status (2026-11-04): VFX and 3D
+
+Built:
+- **3D templates** (Three.js, `mg/lib/three-kit.js`): title_3d (extruded bevelled TTF glyphs for Latin,
+  shaped "slab" text for Bangla and any script), logo_3d (SVG extruded in its own fills, PNG slab, name
+  fallback), product_spin, device_mockup (phone/tablet/laptop, frame-exact video screens), particles
+  (dust, bokeh, snow, stars, sparks, confetti; deterministic), camera_flythrough, chart_3d, globe. Same
+  HTML in the renderer and the Studio (three.js from jsDelivr through an import map).
+- **Blender** (`scripts/vedit/blender.py`, `blender/*.py`): title_3d, logo_3d, product_turntable; overlay
+  `mg.engine: "blender"` and CustomFX `kind: "blender"`; RGBA PNG frames -> WebM alpha / ProRes 4444 /
+  green key. Bangla refused (Blender does not shape it) with a pointer to the Three.js template.
+- **VFX in source space** (`scripts/vedit/vfx/`): object tracking (optical flow + VitTrack hybrid),
+  multi-face tracking (YuNet), planar tracking (RANSAC homography from the reference frame, re-seeded),
+  screen suggestions, tracked redaction (mask layers), screen inserts (`screen[]`), overlays that follow a
+  track (`attach`, per-frame sendcmd), person matting (MODNet + fast guided filter + motion-gated temporal
+  smoothing) for `subject` (background blur/swap/darken, outline, glow, `above` = text behind the person
+  via a framed RGBA subject layer), depth (Depth-Anything-V2-Small): 3D photo parallax, depth of field on
+  stills and clips with auto focus on the face. Camera FX: whip / zoom-blur transitions, motion blur,
+  handheld drift, whip effect. `vedit vfx ...` CLI, Studio clip controls (cut-out, text behind, depth of
+  field, face blur request, four-corner screen picker), routes, hand-off notes, references vfx.md and
+  blender.md.
+
+Fixed on the way (all renders benefit):
+- FFmpeg 8.1 dropped main-track frames when an overlay that starts later shares a process with loudnorm
+  (345 of 414 frames survived; the picture froze for seconds per graphic). Picture and sound now run as
+  separate processes and are muxed.
+- A `-loop 1` still image feeding an overlay could stall the compose: stills now loop inside the graph.
+- Segments from differently tagged sources (untagged, BT.601, RGB-blended VFX) made FFmpeg reconfigure
+  mid-stream and an xfade stopped early: every segment now leaves tagged BT.709 / TV range.
+- A transition on a clip starting at source 0 (no handle) shortened the timeline: the edge frame is held.
+- tmix with `enable` dropped frames: motion blur blurs a trimmed copy and overlays it.
+- Segment cache keys carry a version, so filter-chain changes re-render cached clips.
+
+Verified (`tests/test_phase4.py --blender`: 46/46; regressions test_v2 22/22, test_phase2 --render 24/24,
+test_phase3 35/35, test_port 50/50):
+- Tracking on synthetic footage with ground truth: object centre error 2.4 px (IoU 0.97, VitTrack alone
+  7 px); planar corners 0.43 px mean, 0.61 px p95; the screen suggestion lands 12 px from the true corners.
+- In renders: the insert fills 95 % of the moving screen with 0.2 % outside it; the attached label sits
+  within 2-5 px of the tracked box centre; a tracked face blur drops detail 31 -> 5 and YuNet no longer
+  finds the face; every render keeps 414/414 frames.
+- Cut-outs: titles never draw over the person (0.00 %), background detail 0.29 of the original while the
+  person keeps it, outline on 45 % of the edge; still cut-outs keep the person and remove the room
+  (MODNet 2 s, BiRefNet ~1 min per still).
+- Depth: the speaker reads nearer than the wall (0.71 vs 0.27); auto-focus keeps the face and softens the
+  wall to 0.48 of its detail; 3D photo moves without revealing edges.
+- Camera: whip keeps 13.8 s / 414 frames with detail 1421 -> 54 at the cut; motion blur softens only its
+  window; handheld drift moves ~9 px per 0.4 s.
+- Speed here (no NVIDIA): 3D templates ~5 frames/s at 1080x1920; MODNet matte ~3 frames/s (8 ORT threads:
+  250 ms vs 409 ms default, 1115 ms with all 18); Blender EEVEE ~2 s per frame at 540p.
+- Not tested: Fusion (needs Resolve Studio); Studio UI clicks of the new controls (JS syntax and
+  bake/ops parity checked; driving the owner's browser needs their OK).

@@ -79,6 +79,14 @@ option}, `reject` {suggestion}, `choose_direction` {id}, `note` {text}, `request
 `approve` {stage}, `revert` {revision}. Source of truth: `scripts/vedit/ops.py`; the page's mirror
 (`studio/js/ops.js`) is tested against it (`tests/test_v2.py`).
 
+## Effects on a clip
+
+The inspector's "Effects on this clip" sets `subject` (person cut-out background, text behind the person)
+and `dof` directly; the engine renders them (the live preview shows the plain clip). "Blur faces" and
+"Replace a screen" arrive as `request` ops: for faces run `vedit vfx faces <p> --clip <id> --blur`; for a
+screen the owner clicked four corners (`screen[]` gets `canvas_corners` + `timeline_at`): run
+`vedit vfx prepare <p>`, ask which image or video goes on it, set `media`, preview, reply.
+
 ## Without Artifacts
 
 `vedit studio-local <p>` serves the same Studio on `http://127.0.0.1:8765`. Edits apply immediately;

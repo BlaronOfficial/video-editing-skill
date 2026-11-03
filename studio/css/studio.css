@@ -267,3 +267,11 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
   .tl-label span { display: none; }
   .project-select { max-width: 160px; }
 }
+
+/* point picking on the picture (screen replacement corners) */
+.pick-layer { position: absolute; inset: 0; cursor: crosshair; z-index: 50; outline: none; }
+.pick-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pick-shape { fill: color-mix(in srgb, var(--accent) 22%, transparent); stroke: var(--accent); stroke-width: 0.004; }
+.pick-dot { fill: var(--accent); stroke: #000; stroke-width: 0.002; }
+.pick-tip { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 6px 10px; border-radius: 8px;
+            background: rgba(0, 0, 0, .72); color: #fff; font-size: 12px; pointer-events: none; white-space: nowrap; }

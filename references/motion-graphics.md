@@ -5,6 +5,8 @@ You design and animate graphics yourself. Pick the engine per moment and mix fre
 | Engine | When | Output |
 |---|---|---|
 | **Templates** (`vedit mg templates`) | Common beats: titles, lower thirds, lists, counters, CTAs, callouts | alpha video |
+| **3D templates** (Three.js) | title_3d (Bangla too), logo_3d, product_spin, device_mockup, particles, camera_flythrough, chart_3d, globe (`references/vfx.md`) | alpha video, live in the Studio |
+| **Blender** (optional add-on) | Hero shots needing real light: bevelled metal titles, extruded logos, product turntables (`references/blender.md`) | alpha video, slow |
 | **Custom HTML** (GSAP/CSS/SVG/Canvas/Three.js/Lottie) | Anything bespoke: explainer diagrams, data viz, branded intros, kinetic type synced to words | alpha video |
 | **Remotion** (`mg/remotion`) | React-based scenes, reusable compositions, heavy data-driven scenes | ProRes 4444 alpha |
 | **HyperFrames** (`npx hyperframes`) | Full-screen HTML video scenes with embedded video | MP4 |

@@ -487,6 +487,7 @@ def app_files() -> dict[str, str]:
         files[f"mg/templates/{f.name}"] = str(f)
     files["mg/templates/index.json"] = str(mg_dir() / "templates" / "index.json")
     files["mg/lib/vedit.js"] = str(mg_dir() / "lib" / "vedit.js")
+    files["mg/lib/three-kit.js"] = str(mg_dir() / "lib" / "three-kit.js")   # 3D templates (three.js from jsDelivr)
     files["mg/lib/base.css"] = str(studio_base_css())
     return files
 

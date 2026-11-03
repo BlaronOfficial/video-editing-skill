@@ -1,0 +1,111 @@
+<!doctype html>
+<!-- product_spin: a product cut-out (transparent PNG) as a floating card that turns, with a glow ring, a soft
+     floor reflection and name / price tags sliding in. Pair with `vedit vfx cutout photo.jpg`.
+     data: {image: "C:/path/product.png", title, price, accent: "#hex", turn: 0..1 (fraction of a full turn),
+            floor: reflect|shadow|none, y: 0..1, width: 0..1, duration} -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="/__mg/base.css">
+<script type="importmap">{"imports": {"three": "/__vendor/three/build/three.module.js", "three/addons/": "/__vendor/three/examples/jsm/"}}</script>
+</head><body><div id="stage" data-composition-id="main"></div>
+<script type="module">
+import { THREE, D, stage, view, lights, run, ease, seg, clamp, lerp, fontsReady, label, loadTexture, softDisc,
+         canvasTexture, ready } from "/__mg/three-kit.js";
+const d = D({ image: "", title: "", price: "", accent: "#FFE14D", turn: 0.18, floor: "reflect", y: 0.46, width: 0.62, duration: 4 });
+document.getElementById("stage").dataset.duration = d.duration;
+
+function placeholder() {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 640;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 0, 640);
+  g.addColorStop(0, "#3a3f4b"); g.addColorStop(1, "#1b1d23");
+  x.fillStyle = g; x.beginPath(); x.roundRect(40, 40, 432, 560, 48); x.fill();
+  x.fillStyle = "#ffffff99"; x.font = "700 56px Poppins"; x.textAlign = "center"; x.fillText("PRODUCT", 256, 340);
+  return canvasTexture(c);
+}
+
+function fadeMap() {
+  const c = document.createElement("canvas");
+  c.width = 4; c.height = 256;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, "#000"); g.addColorStop(0.55, "#000"); g.addColorStop(1, "#fff");
+  x.fillStyle = g; x.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c);
+  return t;
+}
+
+ready((async () => {
+  const st = stage({ fov: 30 });
+  const { scene, camera, renderer } = st;
+  camera.position.set(0, 0.6, 12);
+  camera.lookAt(0, 0, 0);
+  lights(scene, { rim: d.accent, rimIntensity: 3.5 });
+  await fontsReady([`800 100px "Poppins"`, `600 100px "Poppins"`]);
+  let tex;
+  try { tex = d.image ? await loadTexture(d.image, renderer) : placeholder(); } catch { tex = placeholder(); }
+  const ar = tex.image.width / tex.image.height;
+  const h = 1, w = h * ar;
+  const geo = new THREE.PlaneGeometry(w, h);
+  const card = new THREE.Group();
+  const n = 8;
+  for (let i = n; i >= 1; i--) {
+    const m = new THREE.MeshStandardMaterial({ map: tex, color: new THREE.Color(0x777777), transparent: true, alphaTest: 0.3,
+                                               roughness: 0.5, side: THREE.DoubleSide });
+    const p = new THREE.Mesh(geo, m);
+    p.position.z = -0.04 * (i / n);
+    card.add(p);
+  }
+  const front = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.3, roughness: 0.4, metalness: 0.05 }));
+  card.add(front);
+  const root = new THREE.Group();
+  const turner = new THREE.Group();
+  turner.add(card);
+  root.add(turner);
+  scene.add(root);
+
+  let refl = null;
+  if (d.floor === "reflect") {
+    refl = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.22, alphaMap: fadeMap(), depthWrite: false }));
+    refl.scale.y = -1;
+    refl.position.y = -h - 0.02;
+    turner.add(refl);
+  }
+  const shadow = d.floor !== "none" ? softDisc(w * 0.55, { opacity: 0.5 }) : null;
+  if (shadow) { shadow.rotation.x = -Math.PI / 2; shadow.position.y = -h / 2 - 0.01; root.add(shadow); }
+  const ring = softDisc(Math.max(w, h) * 0.9, { color: d.accent, opacity: 0 });
+  ring.position.z = -0.4;
+  root.add(ring);
+
+  const vw = view(camera, 12);
+  const base = d.width * Math.min(vw.w / w, vw.h * 0.55 / h);
+  root.scale.setScalar(base);
+  const y0 = (0.5 - d.y) * vw.h;
+  const tags = [];
+  if (d.title) tags.push(label(d.title, { height: 0.16, weight: 800, renderer }));
+  if (d.price) tags.push(label(d.price, { height: 0.13, weight: 700, color: "#111111", bg: d.accent, renderer }));
+  tags.forEach((t, i) => { t.position.set(0, -h / 2 - 0.22 - i * 0.2, 0.2); root.add(t); });
+
+  const fades = [];
+  card.traverse((o) => { if (o.material) { o.material.transparent = true; fades.push([o.material, 1]); } });
+  if (refl) fades.push([refl.material, 0.22]);
+  if (shadow) fades.push([shadow.material, 0.5]);
+  const D0 = d.duration, tIn = Math.min(0.9, D0 * 0.3);
+  run(st, (t) => {
+    const p = ease.back(seg(t, 0, tIn), 1.3);
+    root.position.y = y0 + lerp(-vw.h * 0.35, 0, ease.out(seg(t, 0, tIn))) + Math.sin(t * 1.4) * 0.03 * (t > tIn ? 1 : 0);
+    root.scale.setScalar(base * lerp(0.6, 1, p));
+    const spin = d.turn * Math.PI * 2;
+    turner.rotation.y = lerp(-spin, spin * 0.35, ease.inOut(seg(t, 0, D0))) + Math.sin(t * 0.9) * 0.08;
+    card.rotation.x = -0.05 + Math.sin(t * 1.2) * 0.03;
+    ring.material.opacity = 0.32 * ease.out(seg(t, tIn * 0.5, tIn + 0.5)) * (1 - ease.in(seg(t, D0 - 0.35, D0)));
+    ring.rotation.z = t * 0.3;
+    const fade = 1 - ease.in(seg(t, D0 - 0.35, D0));
+    tags.forEach((tg, i) => {
+      const q = ease.out(seg(t, tIn + 0.15 * i, tIn + 0.5 + 0.15 * i));
+      tg.material.opacity = q * fade;
+      tg.position.x = lerp(-0.4, 0, q);
+    });
+    fades.forEach(([m, o]) => { m.opacity = o * fade; });
+  }, D0);
+})());
+</script></body></html>
