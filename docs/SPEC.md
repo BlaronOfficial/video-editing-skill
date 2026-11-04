@@ -508,3 +508,21 @@ and a run under that pressure was stopped by Windows):
 
 Not tested live: a piece playing in the published Studio, `anim capture` on a real site, ElevenLabs lines in
 `anim voice`, macOS.
+
+Review and release checks (2026-11-05, with the render tests still waiting for memory):
+- A read-through of the shared code Phase 6 touched (QA, MG cache keys, renderer passes, voice lines,
+  Studio pieces, beat snap, piece builds) fixed:
+  - text probes cached two folders up from the render (stray `mg/` folders for a `vedit qa --render`
+    file outside the project);
+  - caption widths measured 1.2-1.9x too wide: libass sizes a font by its OS/2 Windows cell height, not
+    its em. Against libass renders the check is now within 0-2 % (Bangla 15 % wide, on the safe side), and
+    finds Luckiest Guy, Anton and Atma, which it skipped before;
+  - the still-stretch measure made one int16 copy of every frame (about 1 GB for an hour of 16:9 at
+    8 fps), now chunked;
+  - hand-written caption chunks didn't move with a snap ripple;
+  - a narration line containing `</script>` could end a piece's script.
+- One known side effect: MG overlays rendered before phase 6 re-render once, because the cache key now
+  carries the composition's own frame rate and file content.
+- A fresh clone of `v2` (4 MB) set up in 46 s from the local caches (uv, npm; fonts copied in) and doctor
+  said READY. In the clone, every style demo, both templates and the 60 s example built, and the beat map
+  read a 120 BPM click as 120.0 BPM with 10 bars.
