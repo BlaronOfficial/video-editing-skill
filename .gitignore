@@ -29,3 +29,8 @@ desktop.ini
 
 # Claude-app launcher zips are built per machine (they carry the local skill path)
 /app/claude-app/*.zip
+
+# Animated pieces built in place (pieces normally live in a project's edit/anim/)
+/anim/**/index.html
+/anim/**/renders/
+/anim/**/review/

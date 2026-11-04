@@ -1,0 +1,5 @@
+{"about": "playful bed: bouncy staccato plucks, blips, a light kick and shaker",
+ "bpm": [108, 120], "key": "G", "mode": "major", "progression": ["I", "IV", "V", "I"],
+ "pad": {"level": 0.03, "cut": 1600}, "pluck": {"level": 0.08, "bright": 5000, "pattern": "bounce", "every": 8, "short": true},
+ "bass": {"level": 0.12, "hits": [0, 1.5, 2]}, "drums": {"kick": [0, 2], "snare": [], "hat": [0.5, 1.5, 2.5, 3.5], "blip": [3.5], "level": 0.55},
+ "density": {"intro": 0.4, "build": 0.65, "peak": 0.9, "gift": 0.8, "outro": 0.45}}

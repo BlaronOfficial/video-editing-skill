@@ -19,38 +19,239 @@ SR = 48000
 
 def load_mono(path: str | Path, sr: int = 22050) -> np.ndarray:
     from .paths import cache_dir
-    tmp = cache_dir() / "audio" / (Path(path).stem + f".{sr}.wav")
-    if not tmp.exists() or tmp.stat().st_mtime < Path(path).stat().st_mtime:
+    from .util import short_hash
+    src = Path(path)
+    # the cache name carries the full path: two "track.wav" files in different folders must not share one
+    tmp = cache_dir() / "audio" / f"{src.stem}.{short_hash(str(src.resolve()), length=8)}.{sr}.wav"
+    if not tmp.exists() or tmp.stat().st_mtime < src.stat().st_mtime:
         extract_audio(path, tmp, sample_rate=sr)
     with wave.open(str(tmp), "rb") as w:
         data = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
     return data
 
 
-def beats(path: str | Path, *, sr: int = 22050) -> dict:
-    """Tempo + beat times via spectral-flux onsets and autocorrelation (no heavy deps)."""
+# ------------------------------------------------------------------ beat map
+# Method adapted from animate (MIT, (c) 2026 cth9191), tools/beats.mjs: log spectral flux -> tempo candidates by
+# autocorrelation plus their metrical relatives -> each refined (+-2%) by a beat comb over the whole track ->
+# phase -> bars from the low band. Added here: a weighted fit of the grid to the onsets themselves, so a
+# constant-tempo grid stays on the beat to the end (the old integer-lag grid read a 120 BPM track as 117.5 and
+# was a whole beat late after 29 s).
+
+_NFFT, _HOP = 1024, 256
+_LAT = 0.0345                   # onset-frame time -> attack time (measured: clicks 35.0 ms, drum loops 33.3-34.0 ms)
+
+
+def _flux(y: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Per hop: log-magnitude spectral flux (onset strength), its low band (<= 150 Hz: the kick), and a
+    linear-magnitude flux below 5 kHz that keeps loudness differences (a hi-hat stays quieter than a snare)."""
+    n = max(0, (len(y) - _NFFT) // _HOP + 1)
+    onset, low, lin = np.zeros(n, np.float32), np.zeros(n, np.float32), np.zeros(n, np.float32)
+    if not n:
+        return onset, low, lin
+    win = np.hanning(_NFFT).astype(np.float32)
+    low_bin = max(1, round(150 / (sr / _NFFT)))
+    mid_bin = max(low_bin + 1, round(5000 / (sr / _NFFT)))
+    view = np.lib.stride_tricks.sliding_window_view(y, _NFFT)[::_HOP]
+    prev = prev_lin = None
+    for a in range(0, n, 2048):                       # chunks keep memory flat on long tracks
+        spec = np.abs(np.fft.rfft(view[a:a + 2048] * win, axis=1)[:, 1:_NFFT // 2]).astype(np.float32)
+        mag = np.log1p(100 * spec)
+        d = np.maximum(np.diff(mag, axis=0, prepend=mag[:1] if prev is None else prev[None, :]), 0)
+        onset[a:a + len(mag)] = d.sum(axis=1)
+        low[a:a + len(mag)] = d[:, :low_bin].sum(axis=1)
+        sl = spec[:, :mid_bin]
+        lin[a:a + len(mag)] = np.maximum(np.diff(sl, axis=0, prepend=sl[:1] if prev_lin is None else prev_lin[None, :]), 0).sum(axis=1)
+        prev, prev_lin = mag[-1], sl[-1]
+    return onset, low, lin
+
+
+def _max3(a: np.ndarray) -> np.ndarray:
+    """Each value's maximum over +-1 frame (a beat tooth takes the strongest onset next to it)."""
+    return np.maximum(a, np.maximum(np.r_[a[:1], a[:-1]], np.r_[a[1:], a[-1:]]))
+
+
+def _comb(env3: np.ndarray, fps: float, per: float, phases: np.ndarray) -> np.ndarray:
+    """Mean onset strength on the grid `phase + k * period` over the whole track, for each phase."""
+    k = np.arange(int(len(env3) / fps / per) + 1)
+    idx = np.rint((phases[:, None] + k[None, :] * per) * fps).astype(np.int64)
+    ok = idx < len(env3)
+    vals = np.where(ok, env3[np.minimum(idx, len(env3) - 1)], 0.0)
+    return vals.sum(axis=1) / np.maximum(1, ok.sum(axis=1))
+
+
+def _fit_grid(env: np.ndarray, fps: float, o: float, per: float) -> tuple[float, float]:
+    """Refine phase and period by a weighted least-squares fit of the observed onset peaks to the grid."""
+    thr = float(env.mean() + 0.5 * env.std())
+    for _ in range(3):
+        ks, ts, ws = [], [], []
+        for k in range(int((len(env) / fps - o) / per) + 1):
+            i = int(round((o + k * per) * fps))
+            lo, hi = max(1, i - 2), min(len(env) - 2, i + 2)
+            if hi < lo:
+                continue
+            j = lo + int(np.argmax(env[lo:hi + 1]))
+            if env[j] < thr:
+                continue
+            a, b, c = float(env[j - 1]), float(env[j]), float(env[j + 1])
+            den = a - 2 * b + c
+            ks.append(k)
+            ts.append((j + (0.5 * (a - c) / den if den else 0.0)) / fps)   # parabolic peak
+            ws.append(b)
+        if len(ks) < 8:
+            break
+        w = np.sqrt(np.asarray(ws))
+        K = np.asarray(ks, float)
+        sol, *_ = np.linalg.lstsq(np.vstack([np.ones_like(K), K]).T * w[:, None], np.asarray(ts) * w, rcond=None)
+        o2, per2 = float(sol[0]), float(sol[1])
+        if per2 <= 0 or abs(per2 - per) / per > 0.005:
+            break
+        o, per = o2 % per2, per2
+    return o, per
+
+
+def beats(path: str | Path, *, sr: int = 22050, start: float = 0.0, dur: float | None = None,
+          bpm: float | str | None = None) -> dict:
+    """Beat map of a music track: tempo, a beat grid that stays on the beat, bars, the big hits, the loudest
+    moment and the drops. Times are seconds into the used window (`start`, `dur`). Constant tempo is assumed
+    (most pop, electronic and library music); `bpm` = a known tempo (refined +-0.2%) or a range "70-180".
+    """
     y = load_mono(path, sr)
-    hop, win = 512, 2048
-    if len(y) < win * 4:
-        return {"bpm": None, "beats": [], "onsets": []}
-    frames = np.lib.stride_tricks.sliding_window_view(y, win)[::hop] * np.hanning(win)
-    mag = np.abs(np.fft.rfft(frames, axis=1))
-    flux = np.maximum(0, np.diff(np.log1p(mag), axis=0)).sum(axis=1)
-    flux = (flux - flux.mean()) / (flux.std() + 1e-9)
-    fps = sr / hop
-    # tempo: autocorrelation peak between 70 and 180 BPM
-    ac = np.correlate(flux, flux, mode="full")[len(flux) - 1:]
-    lo, hi = int(fps * 60 / 180), int(fps * 60 / 70)
-    lag = lo + int(np.argmax(ac[lo:hi])) if hi > lo else lo
-    bpm = 60 * fps / lag if lag else None
-    # beat phase: offset maximising flux on the grid
-    period = lag
-    best = max(range(period), key=lambda o: flux[o::period].sum()) if period else 0
-    beat_frames = np.arange(best, len(flux), period)
-    onset_frames = np.where((flux[1:-1] > flux[:-2]) & (flux[1:-1] >= flux[2:]) & (flux[1:-1] > 1.5))[0] + 1
-    return {"bpm": round(float(bpm), 1) if bpm else None,
-            "beats": [round(float(f / fps), 3) for f in beat_frames],
-            "onsets": [round(float(f / fps), 3) for f in onset_frames][:2000]}
+    y = y[int(start * sr):] if not dur else y[int(start * sr):int((start + dur) * sr)]
+    dur_s = len(y) / sr
+    out: dict = {"source": Path(path).name, "start": round(float(start), 3), "duration": round(dur_s, 3),
+                 "bpm": None, "beats": [], "downbeats": [], "onsets": [], "hits": []}
+    if dur_s < 4.0:
+        return out
+    onset, low, lin = _flux(y, sr)
+    fps = sr / _HOP
+    r = max(1, round(0.186 * fps))
+    env = np.maximum(0, onset - np.convolve(onset, np.ones(2 * r + 1) / (2 * r + 1), mode="same")).astype(np.float64)
+    env3 = _max3(env)
+    if isinstance(bpm, str) and "-" in bpm:
+        bmin, bmax = (float(v) for v in bpm.split("-", 1))
+        known = None
+    else:
+        known = float(bpm) if bpm else None
+        bmin, bmax = (known, known) if known else (70.0, 180.0)
+
+    # tempo candidates: peaks of the onset autocorrelation (fractional lags), plus their metrical relatives
+    def ac_at(b: float) -> float:
+        lag = 60.0 / b * fps
+        i = np.arange(int(np.ceil(lag)), len(env))
+        if not len(i):
+            return 0.0
+        j = i - lag
+        j0 = np.floor(j).astype(np.int64)
+        fr = j - j0
+        return float(np.sum(env[i] * (env[j0] * (1 - fr) + env[np.minimum(j0 + 1, len(env) - 1)] * fr)) / len(i))
+
+    if known:
+        cands = {known}
+    else:
+        grid = [(b, ac_at(b)) for b in np.arange(bmin, bmax + 1e-9, 0.5)]
+        peaks = sorted((g for i, g in enumerate(grid) if 0 < i < len(grid) - 1
+                        and g[1] >= grid[i - 1][1] and g[1] >= grid[i + 1][1]), key=lambda g: -g[1])[:5]
+        cands = set() if peaks else {round((bmin + bmax) / 2 * 4) / 4}
+        for b, _ in peaks:
+            for m in (1, 2, 0.5, 1.5, 2 / 3, 4 / 3, 0.75):
+                if bmin <= b * m <= bmax:
+                    cands.add(round(b * m * 4) / 4)
+
+    def prior(b: float) -> float:
+        return float(np.exp(-0.5 * (np.log2(b / 120.0) / 0.6) ** 2))   # tempo prior around 120 BPM
+
+    rw = 0.002 if known else 0.02
+    scored = []
+    for b0 in sorted(cands):
+        best = (0.0, b0, 0.0)
+        for b in np.arange(b0 * (1 - rw), b0 * (1 + rw) + 1e-9, 0.05 if not known else 0.01):
+            per = 60.0 / b
+            ph = np.arange(0, per, 1 / fps / 2)
+            sc = _comb(env3, fps, per, ph)
+            i = int(np.argmax(sc))
+            if sc[i] > best[0]:
+                best = (float(sc[i]), float(b), float(ph[i]))
+        s, b1, o1 = best                               # fine pass around the coarse winner
+        for b in np.arange(b1 - 0.06, b1 + 0.06 + 1e-9, 0.005):
+            per = 60.0 / b
+            ph = (o1 + np.arange(-1 / fps, 1 / fps + 1e-9, 1 / fps / 8)) % per
+            sc = _comb(env3, fps, per, ph)
+            i = int(np.argmax(sc))
+            if sc[i] > s:
+                s, b1, o1 = float(sc[i]), float(b), float(ph[i])
+        scored.append({"bpm": b1, "o": o1, "s": s, "score": s * prior(b1)})
+    scored.sort(key=lambda c: -c["score"])
+    top = dict(scored[0])
+    # double time: when the teeth between the beats are about as loud (snares between kicks, every click of a
+    # fast track), the faster grid is the beat; the tempo prior alone would pick the half-time reading. Judged
+    # on the linear flux: on the log flux, off-beat hi-hats look as strong as the drums.
+    if not known and top["bpm"] * 2 <= bmax:
+        lin3 = _max3(lin.astype(np.float64))
+        per1, per2 = 60.0 / top["bpm"], 30.0 / top["bpm"]
+        on = float(_comb(lin3, fps, per1, np.array([top["o"]]))[0])
+        mid = float(_comb(lin3, fps, per1, np.array([(top["o"] + per2) % per1]))[0])
+        if on > 0 and mid >= 0.8 * on:
+            ph2 = (top["o"] + np.arange(-1 / fps, 1 / fps + 1e-9, 1 / fps / 8)) % per2
+            s2 = _comb(env3, fps, per2, ph2)
+            top = {"bpm": top["bpm"] * 2, "o": float(ph2[int(np.argmax(s2))]), "s": float(s2.max()), "score": top["score"]}
+            scored.insert(0, top)
+    o, per = _fit_grid(env, fps, top["o"], 60.0 / top["bpm"])
+    o = (o + _LAT) % per
+    beat_t = np.arange(o, dur_s - 1e-6, per)
+
+    # bars: of the 4 beat phases, the one with the most low-band (kick) energy starts the bar. A kick's low band
+    # builds up over a few hops, so each beat sums the 50 ms after it.
+    lowc = np.convolve(low.astype(np.float64), np.ones(6), mode="full")[5:5 + len(low)]   # sum of frames i..i+5
+    idx = np.clip(np.rint((beat_t - _LAT) * fps).astype(np.int64) - 1, 0, len(lowc) - 1)
+    bar = int(np.argmax([lowc[idx[k::4]].sum() for k in range(4)])) if len(idx) >= 8 else 0
+    downbeats = beat_t[bar::4]
+
+    # how many beats have a real onset on them (the grid's confidence)
+    thr1 = env.mean() + env.std()
+    eidx = np.clip(np.rint((beat_t - _LAT) * fps).astype(np.int64), 0, len(env3) - 1)
+    confidence = float(np.mean(_max3(env3)[eidx] > thr1)) if len(eidx) else 0.0
+
+    # hits (the strongest onsets, >= 0.4 s apart) and onsets
+    mean, sd = float(env.mean()), float(env.std())
+    is_peak = np.r_[False, (env[1:-1] > env[:-2]) & (env[1:-1] >= env[2:]), False]
+    pk = np.where(is_peak & (env > mean + 2.5 * sd))[0]
+    hits: list[float] = []
+    for i in pk[np.argsort(-env[pk])]:
+        t = i / fps + _LAT
+        if all(abs(t - h) > 0.4 for h in hits):
+            hits.append(t)
+        if len(hits) >= 64:
+            break
+    onsets = (np.where(is_peak & (env > mean + 1.5 * sd))[0] / fps + _LAT)[:2000]
+
+    # loudness per 100 ms: the loudest moment, and the drops (>= 0.5 s at 15 dB under the median)
+    blk = sr // 10
+    nb = len(y) // blk
+    db = 10 * np.log10(np.mean(y[:nb * blk].reshape(nb, blk).astype(np.float64) ** 2, axis=1) + 1e-12)
+    med = float(np.median(db))
+    loud = int(np.argmax(db))
+    quiet, q0 = [], -1
+    for i, v in enumerate(list(db) + [med]):
+        if v < med - 15:
+            q0 = i if q0 < 0 else q0
+        else:
+            if q0 >= 0 and i - q0 >= 5:
+                quiet.append([round(q0 / 10, 1), round(i / 10, 1)])
+            q0 = -1
+
+    out.update({
+        "bpm": round(60.0 / per, 2), "period": round(per, 5), "offset": round(float(o), 4),
+        "beats": [round(float(t), 3) for t in beat_t],
+        "downbeats": [round(float(t), 3) for t in downbeats], "beats_per_bar": 4,
+        "hits": sorted(round(float(t), 3) for t in hits),
+        "loudest": {"t": round(loud / 10, 1), "db": round(float(db[loud]), 1)},
+        "quiet": quiet,
+        "onsets": [round(float(t), 3) for t in onsets],
+        "confidence": round(confidence, 2),
+        "other_tempos": [{"bpm": round(c["bpm"], 2), "score": round(c["score"] / top["score"], 2)}
+                         for c in scored[1:4]],
+    })
+    return out
 
 
 def energy_curve(path: str | Path, *, step: float = 0.5) -> list[tuple[float, float]]:

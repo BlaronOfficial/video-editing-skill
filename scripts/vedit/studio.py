@@ -244,10 +244,11 @@ def build(p: Project, *, only: list[str] | None = None) -> dict:
             (root / "peaks").mkdir(parents=True, exist_ok=True)
             entry["peaks"] = {"file": str(_peaks(src.path, root / "peaks" / f"{sid}.json"))}
         media[sid] = entry
-    # Rendered overlays that are not live HTML (images, gifs, custom FX output) need a preview file too.
+    # Rendered overlays that are not live HTML (images, gifs, custom FX output, animated pieces too big for a
+    # database document) need a preview file too.
     overlays = {}
     for ov in edit.overlays:
-        if ov.path and Path(ov.path).exists() and not (ov.mg and (ov.mg.template or (ov.mg.file or "").endswith(".html"))):
+        if ov.path and Path(ov.path).exists() and not _live_html(p, ov):
             overlays[ov.id] = {"file": str(_web_preview(Path(ov.path), root / "overlays"))}
     write_json(root / "media.local.json", {"sources": media, "overlays": overlays})
     pending = pending_uploads(p)
@@ -349,6 +350,27 @@ def _words_docs(edit) -> dict[str, dict]:
     return docs
 
 
+def _is_piece(ov) -> bool:
+    """An animated piece (vedit anim): edit/anim/<piece>/index.html."""
+    return bool(ov.mg and ov.mg.file and Path(ov.mg.file).parent.parent.name == "anim")
+
+
+def _live_html(p: Project, ov) -> bool:
+    """Does this overlay play live in the Studio (as HTML), or from its rendered file?"""
+    if not ov.mg:
+        return False
+    if ov.mg.template:
+        return True
+    if not (ov.mg.file or "").endswith(".html"):
+        return False
+    if _is_piece(ov):   # pieces embed the owner's screenshots: too big for one database document -> rendered proxy
+        f = Path(ov.mg.file)
+        f = f if f.is_absolute() else p.root / f
+        doc = {"overlay": ov.id, "html": f.read_text(encoding="utf-8")} if f.exists() else {}
+        return bool(doc) and len(json.dumps(doc, ensure_ascii=False).encode("utf-8")) <= DOC_LIMIT
+    return True
+
+
 def _comp_docs(p: Project, edit) -> dict[str, dict]:
     """Project-specific compositions and personal templates travel as HTML text in the database."""
     docs = {}
@@ -357,6 +379,8 @@ def _comp_docs(p: Project, edit) -> dict[str, dict]:
         if not ov.mg:
             continue
         if ov.mg.file and ov.mg.file.endswith(".html"):
+            if _is_piece(ov) and not _live_html(p, ov):
+                continue                       # played from its rendered video (see the overlays previews)
             f = Path(ov.mg.file)
             f = f if f.is_absolute() else p.root / f
             if f.exists():

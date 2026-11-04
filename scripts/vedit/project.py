@@ -13,6 +13,7 @@
     capcut/          snapshot of the generated CapCut content (learn-from-edits)
     studio/          Studio bundle: proxies, peaks, sprites, data docs, upload map
     custom/          code Claude wrote for this edit (compositions, python FX)
+    anim/            animated pieces (vedit anim): piece.json, src/, assets/, voice/, index.html, renders/
     inbox/           files pulled in from the browser's Downloads (web AI, research)
     suggestions.json / directions.json   Studio suggestion cards and creative directions
 """
@@ -33,7 +34,7 @@ RATIOS = {
 }
 
 SUBDIRS = ("transcripts", "storyboard", "mg", "assets", "render", "qa", "capcut", "studio", "custom", "inbox",
-           "watch", "sound", "handoff")
+           "watch", "sound", "handoff", "anim")
 
 
 def slug(text: str, max_len: int = 40) -> str:

@@ -119,6 +119,17 @@ two automatic rounds in auto mode):
 - **Ending**: the payoff, then a CTA, then out. No trailing silence or black.
 - **Platform**: ratio, length, captions burned or sidecar as the platform needs.
 
+QA measures parts of this bar for you. Trust a measured flag over your eye: a label cut off at the frame edge
+looks fine on a contact sheet.
+- `text_cut` / `text_ui` / `text_overlap`: words in graphics and animated pieces cut off by the frame, under
+  the platform UI, or over other words; caption words too wide to wrap.
+- `static`: no cut, graphic, b-roll or move for over 4 s on shorts (8 s on long-form) while the picture barely
+  changes. The knob `qa_static_max` changes the limit.
+- `pace`: generated VO lines over 3.5 words/s in English (3.0 in Bangla): rewrite them, or give them time.
+- `beat_grid`: cuts off the grid of a music clip marked `sync` (`vedit beats snap` fixes them).
+- `sound_arc`: with a `payoff` marker, no silence (at least 0.4 s at -40 dBFS or quieter) before the loudest
+  moment, or the loudest moment is not on the payoff.
+
 What is a matter of taste rather than quality becomes a suggestion card (below) instead of your silent
 choice.
 

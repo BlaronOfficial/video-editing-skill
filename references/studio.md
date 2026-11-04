@@ -36,6 +36,11 @@ Database layout: `projects/<pid>` (card), `projects/<pid>/docs/<name>` (meta, ed
 library, suggestions, directions, comp_* for custom compositions, tpl_* for personal templates),
 `projects/<pid>/ops/<id>` (the owner's edits waiting for you).
 
+Animated pieces (`vedit anim add`) play live as `comp_anim_<piece>` when the page fits in one document (about
+200 KB). A piece that embeds screenshots plays from its rendered proxy instead.
+`vedit anim board <p> <piece> --cards` adds one card per storyboard panel (thumbs up / down, jumping to the
+panel) for the look and storyboard check-ins.
+
 ## When the owner presses Send to Claude
 
 The page writes their edits as op documents and posts a comment thread "sent to Claude", which wakes

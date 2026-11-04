@@ -63,7 +63,12 @@ whip_down|zoom_blur; a clip with no source handle holds its edge frame.
 **overlays[]** - `start`, `duration`, `layer` (stacking), `transform`, `fit` none|cover|contain,
 `fade_in/out`, `chroma` (#hex key colour if the media uses a green screen), and either `path`
 (ready media: alpha .webm/.mov, .png, .gif) or `mg` {engine auto|html|hyperframes|remotion|pil,
-template | file, data, width, height}. `vedit mg render` fills `path` and `renders`.
+template | file, data, width, height, alpha}. `vedit mg render` fills `path` and `renders`. Two extras:
+- `alpha: false` renders one opaque MP4 (a full-frame composition);
+- `data.fps` sets the composition's own frame rate (animated pieces move on 24 fps).
+
+An animated piece is an overlay with `mg.file: "anim/<piece>/index.html"` (`vedit anim add`, ids `anim_<piece>`).
+Its score stems come in as audio clips `anim_<piece>_music` / `_sfx` (or `_track` for the owner's own track).
 
 **captions** - `style` (see `vedit captions styles`), `overrides` (any style key), `engine` ass,
 `max_words`, `max_chars`, `uppercase`, `chunks[]` {start, end, text, words[{w,s,e}], emphasis[idx],
@@ -74,7 +79,8 @@ emoji, y}. Empty chunks = generated from transcripts through the cut at render/b
 pop|fade|slide}, `transform`, `capcut_intro/outro/loop` (CapCut text animation names or aliases).
 
 **audio[]** - `source`, `start`, `src_in`, `src_out`, `volume`, `role` music|sfx|vo|ambience, `duck`
-(default true for music/ambience), `fade_in/out`, `loop`.
+(default true for music/ambience), `fade_in/out`, `loop`, `sync` beats|bars|8ths (music: cuts should sit on
+this grid; QA `beat_grid` checks them, `vedit beats snap` moves them).
 
 **tracks[]** - written by `vedit vfx track|faces|screen`: `{id, source, kind object|face|planar, t0, t1, file}`.
 Overlays take `attach` {track, offset [x, y], point center|top|bottom, smooth} to follow one.

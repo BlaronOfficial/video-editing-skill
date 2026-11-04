@@ -23,3 +23,11 @@ and credit routes always need an estimate and a yes.
 
 Add your own: `personal/routes.json` (same shape) or `ROUTES` in a personal extension. Routes are advice,
 not rails: combine them, or invent a better way and log it.
+
+Animation:
+- `animation` (explainers, histories, stories, product reels) ranks the shipped styles first (`anim_styles`),
+  then a look made from the owner's references (`anim_new_style`), custom HTML, and AI video for photoreal
+  moments.
+- `scene_clip` offers an animated insert (`anim_scene`).
+- `motion_graphic` offers doodles over footage (`anim_overlay`).
+- `music` offers a bed made in code (`code_score`, below the owner's tracks and good library music).

@@ -164,17 +164,36 @@ def overlay_formats(capcut_alpha: str) -> list[str]:
     return ["webm", "key"]
 
 
+def overlay_target(edit: Edit, ov: Overlay, out_dir: Path, *, capcut_alpha: str = "unknown") -> tuple[Path, list[str], int, int, float]:
+    """Where an MG overlay's render lives and how it is made: (stem, formats, width, height, fps).
+
+    Opaque compositions (`mg.alpha: false`, e.g. a full-frame animated piece) render one MP4; a composition may
+    set its own frame rate in `mg.data.fps` (animated pieces move on a 24 fps grid; compose converts).
+    """
+    spec = ov.mg
+    W = spec.width or edit.canvas.width
+    H = spec.height or edit.canvas.height
+    fps = float(spec.data.get("fps") or edit.canvas.fps)
+    key = short_hash(spec.model_dump(mode="json"), ov.duration, W, H, fps,
+                     _file_stamp(spec.file, out_dir) if spec.file else None)
+    formats = overlay_formats(capcut_alpha) if spec.alpha else ["mp4"]
+    return out_dir / f"{ov.id}_{key}", formats, W, H, fps
+
+
+def _file_stamp(ref: str, out_dir: Path):
+    """A composition file's content changes the cache key (an edited piece re-renders)."""
+    p = Path(ref)
+    if not p.is_absolute():
+        p = out_dir.parent / p
+    return short_hash(p.read_text(encoding="utf-8", errors="replace")) if p.exists() else ref
+
+
 def render_overlay(edit: Edit, ov: Overlay, out_dir: Path, *, capcut_alpha: str = "unknown", force: bool = False) -> Overlay:
     spec = ov.mg
     if spec is None:
         return ov
-    W = spec.width or edit.canvas.width
-    H = spec.height or edit.canvas.height
-    fps = edit.canvas.fps
-    key = short_hash(spec.model_dump(mode="json"), ov.duration, W, H, fps)
-    stem = out_dir / f"{ov.id}_{key}"
+    stem, formats, W, H, fps = overlay_target(edit, ov, out_dir, capcut_alpha=capcut_alpha)
     engine = pick_engine(spec)
-    formats = overlay_formats(capcut_alpha)
     existing = [Path(str(stem) + OVERLAY_FORMATS[f]) for f in formats]
     if not force and all(p.exists() for p in existing):
         outputs = existing

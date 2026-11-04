@@ -522,8 +522,26 @@ def cmd_sfx(a):
 
 
 def cmd_beats(a):
+    if a.file == "snap":
+        from .beatsync import snap
+        if not a.project or not a.music:
+            raise VeditError("usage: vedit beats snap <project> --music <audio clip id> [--grid beats|bars|8ths] "
+                             "[--tolerance 0.12] [--apply]")
+        proj = _proj(a.project)
+        edit, rows = snap(proj.edit(), a.music, grid=a.grid, tolerance=a.tolerance)
+        moved = [r for r in rows if r.get("action") == "moved"]
+        if a.apply and moved:
+            proj.save_edit(edit)
+            proj.log(f"beats snap: moved {len(moved)} cuts onto the {a.grid} grid of {a.music}")
+        print_json({"applied": bool(a.apply and moved), "moved": len(moved), "rows": rows,
+                    "next": None if a.apply or not moved else "rerun with --apply to keep these moves"})
+        return
     from .audio import beats
-    print_json(beats(a.file))
+    res = beats(a.file, start=a.start, dur=a.dur, bpm=a.bpm)
+    if a.out:
+        from .util import write_json
+        write_json(Path(a.out), res)
+    print_json(res)
 
 
 def cmd_reframe(a):
@@ -710,7 +728,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_download)
     s = sp.add_parser("sfx"); s.add_argument("kind"); s.add_argument("--out", required=True); s.add_argument("--duration", type=float)
     s.add_argument("--seed", type=int, default=3); s.add_argument("--pitch", type=float, default=1.0); s.set_defaults(fn=cmd_sfx)
-    s = sp.add_parser("beats"); s.add_argument("file"); s.set_defaults(fn=cmd_beats)
+    s = sp.add_parser("beats", help="beat map of a track (tempo, beats, bars, hits, drops); `beats snap <p>` puts cuts on it")
+    s.add_argument("file", help="audio/video file, or `snap`"); s.add_argument("project", nargs="?")
+    s.add_argument("--start", type=float, default=0.0); s.add_argument("--dur", type=float)
+    s.add_argument("--bpm", help="a known tempo (e.g. 128) or a range (e.g. 70-180)"); s.add_argument("--out")
+    s.add_argument("--music", help="snap: the music clip id"); s.add_argument("--grid", default="beats", choices=["beats", "bars", "8ths"])
+    s.add_argument("--tolerance", type=float, default=0.12, help="snap: max move in seconds")
+    s.add_argument("--apply", action="store_true"); s.set_defaults(fn=cmd_beats)
     s = sp.add_parser("reframe"); s.add_argument("path"); s.add_argument("--ratio"); s.set_defaults(fn=cmd_reframe)
     s = sp.add_parser("shorts"); s.add_argument("action", choices=["candidates", "make"]); s.add_argument("path")
     s.add_argument("name", nargs="?"); s.add_argument("keeps", nargs="?"); s.add_argument("--source", nargs="*")
@@ -752,6 +776,10 @@ def build_parser() -> argparse.ArgumentParser:
     env.register_cli(sp)
     from . import analytics
     analytics.register_cli(sp)
+    from .anim import cli as anim_cli
+    anim_cli.register_cli(sp)
+    from . import score
+    score.register_cli(sp)
     blender.register_cli(sp)
     extensions.register_cli(sp)
     return ap

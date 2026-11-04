@@ -1,0 +1,5 @@
+{"about": "minimal tech bed: no drums, a clean pulse, sparse plucks, a soft pad",
+ "bpm": [100, 116], "key": "C", "mode": "major", "progression": ["vi", "IV", "I", "V"],
+ "pad": {"level": 0.04, "cut": 1300}, "pluck": {"level": 0.06, "bright": 3000, "pattern": "sparse", "every": 8},
+ "bass": {"level": 0.1, "hits": [0]}, "drums": {"kick": [], "snare": [], "hat": [], "level": 0.0},
+ "density": {"intro": 0.35, "build": 0.55, "peak": 0.75, "gift": 0.7, "outro": 0.35}}

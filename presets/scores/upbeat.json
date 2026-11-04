@@ -1,0 +1,5 @@
+{"about": "upbeat pop bed: four-on-the-floor kick, claps on 2 and 4, off-beat hats, bright plucks",
+ "bpm": [112, 124], "key": "E", "mode": "major", "progression": ["vi", "IV", "I", "V"],
+ "pad": {"level": 0.04, "cut": 1500}, "pluck": {"level": 0.08, "bright": 4200, "pattern": "up", "every": 8},
+ "bass": {"level": 0.13, "hits": [0, 1, 2, 3]}, "drums": {"kick": [0, 1, 2, 3], "snare": [1, 3], "hat": [0.5, 1.5, 2.5, 3.5], "level": 0.65},
+ "density": {"intro": 0.4, "build": 0.7, "peak": 1.0, "gift": 0.85, "outro": 0.45}}

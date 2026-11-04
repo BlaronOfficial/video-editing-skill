@@ -142,6 +142,7 @@ pipelines; standalone free core, everything paid or proprietary optional. Full p
 | Sound / eyes | earshot full (kits + ears), claude-real-video watching, speakers, memory, link ingest (phase 2) |
 | Writing pass | English only (from blader/humanizer MIT rules; humanizer-cli was a malware lure, not used) |
 | Learning | Studio decisions, editor diffs, chat rules, route outcomes, YouTube analytics (phase 5, built 2026-11-04) |
+| Animation | animate's drawing kit and 7 styles (MIT, adapted) for inserts, whole shorts, histories and product reels; its beat map, measured QA and music made in code for every edit (phase 6, built 2026-11-05) |
 
 ### Phase 1 status (2026-10-28): standalone core, director layer, modes, Studio
 
@@ -383,3 +384,127 @@ Verified (`tests/test_phase5.py`: 38/38; regressions test_v2 22/22, test_phase2 
 - Not tested live: the owner's YouTube account (needs their OAuth client), the Claude app with the MCP entry
   (the app must be closed to register it; the owner restarts it), the launcher in the Claude app (the owner
   uploads the zip), the Studio player with an audio-only main track, macOS.
+
+### Phase 6 status (2026-11-05): animated pieces, beat map, measured QA, music made in code
+
+Agreed after studying github.com/cth9191/animate (MIT, © 2026 cth9191; cloned to `C:\Workspace\Projects\Public\animate`,
+vetted as source only with no network code). The owner's rules:
+- take what beats vedit's own and rebuild it inside vedit; keep vedit's parts where they are already better;
+- support every use: inserts, whole shorts, histories, product reels;
+- also take the beat-map fix, the measured QA checks and the music made in code;
+- the story and craft rules apply to animated pieces only.
+
+Built:
+- **Animated pieces** (`anim/`, `scripts/vedit/anim/`, `vedit anim ...`, `references/animation.md`). animate's
+  pieces are carried over:
+  - the drawing kit (seeded hand-drawn lines that boil on 2s, ink / paint / hatch / pencil / stipple / grain,
+    cameras, springs);
+  - the shape-morph renderer and the storyboard;
+  - the 7 styles (cut paper, crosshatch, riso, sketchbook, math, pixel, isometric) with demos, the templates
+    and the 60 s example;
+  - the story grammar, kept for animated pieces only.
+
+  Adapted for vedit:
+  - **Bangla:** per-letter effects step by grapheme clusters (Chrome keeps ক্ষ, ষ্ট্র, স্ত্রী whole), and
+    bundled OFL fonts come first in every stack (Caveat Brush, Permanent Marker, Atma, Galada, Hind Siliguri,
+    Tiro Bangla). The pixel style rasterises Bangla at its low resolution.
+  - **Doodles:** an overlay mode (transparent paper, no backdrop or morphs) for drawing over footage.
+  - **Score:** it doesn't loop in edits (the ring-out is kept, never folded onto the start). Notes are created
+    about 1 s before they sound, which made a 45 s bed render 1.5-2x faster.
+  - **Text:** the typing and lettering functions set their own alignment.
+
+  How it runs inside vedit:
+  - A Python build makes a one-file page with a vedit adapter (`__seek`, `__duration`, `__ready`, format from
+    `__VEDIT_DATA__`, sub-frame motion blur, fonts preloaded).
+  - Pieces render through vedit's renderer (system Chrome, GPU).
+  - `vedit anim voice` times a piece to any vedit voice (`VOICE`, `VL()`, `VW()`).
+  - `vedit anim beats` maps the owner's track.
+  - `vedit anim capture` screenshots the owner's own site.
+  - `vedit anim review` checks the cut grid, morph grid, dead beats, narration pace, story arc, anchor, text
+    and sound, and writes per-shot sheets and phone.jpg.
+  - `vedit anim measure | shotlog | compare | gallery | save-style` make new looks from references.
+  - `vedit anim add --as insert|short|overlay` places a piece: an MG overlay, rendered where the engine looks;
+    the score stems or the owner's track as music and sfx clips (0 dB without speech, -12 dB and ducked under
+    it); the piece's VO as a VO clip.
+  - Pieces up to about 190 KB play live in the Studio; bigger ones play their rendered proxy.
+    `vedit anim board --cards` gives one card per storyboard panel.
+- **Beat map** (`audio.beats`, `vedit beats`): animate's method in numpy (log spectral flux, autocorrelation
+  candidates with metrical relatives, ±2 % comb refinement over the whole track) plus:
+  - a weighted fit to the onsets themselves;
+  - a measured latency correction (34.5 ms);
+  - a loudness-based double-time rule;
+  - downbeats from the kick;
+  - hits, the loudest moment, drops, other tempos and a confidence figure.
+
+  `vedit beats snap` moves montage and b-roll cuts onto the grid: a dry run first, then a ripple that keeps the
+  music in place and never cuts into a word. `AudioClip.sync` marks a music clip whose cuts should sit on its
+  grid. The audio cache no longer shares a file between two same-named tracks.
+- **Measured QA** (`qa.measured_checks`, `scripts/vedit/checks.py`, the renderer's `--probe-text`):
+  - `text_cut` / `text_ui` / `text_overlap`: from the graphics' own pages (canvas text calls and DOM text),
+    plus caption words too wide to wrap;
+  - `static`: no visual event and no motion for over 4 s on shorts, 8 s on long-form;
+  - `pace`: generated VO over 3.5 words/s (Bangla 3.0);
+  - `beat_grid`;
+  - `sound_arc`: the silence before a `payoff` marker and the loudest moment on it.
+
+  `vedit capabilities` and `doctor` report whether WebGL reaches the GPU.
+- **Music made in code** (`vedit score compose`, `presets/scores/*.json`, 7 moods): the edit's length, chapters
+  and payoff shape a bed played by animate's synth, rendered headless (mix only: one pass). It is the owner's,
+  and ranks below their tracks and good library music.
+- **Renderer** (`mg/renderer/render.mjs`):
+  - new passes: `--info`, `--stills`, `--board`, `--audio` / `--audio-parts`, `--probe-text`, `--hash-frames`;
+  - a WebGL GPU report on every run;
+  - the number of Chrome workers by default now also depends on free memory (each headless Chrome with its GPU
+    process holds about 0.6-0.9 GB), after a 4-browser test render pushed the 16 GB laptop to 1.5 GB free;
+  - an edited composition re-renders (its content is in the cache key).
+- `mg`: `alpha: false` gives one opaque MP4, and `data.fps` sets a composition's own frame rate.
+- Routes:
+  - a new need, `animation` (anim_styles first, then anim_new_style, custom HTML, AI video);
+  - `scene_clip.anim_scene`, `motion_graphic.anim_overlay`, `music.code_score`.
+- `styles.analyze_reference` gains a per-second shot log (`rhythm`).
+- The voice engine speaks explicit lines with their own pauses; a line's start is where its speech starts.
+
+Found on the way:
+- The old beat finder rounded the beat to whole analysis frames: a 120 BPM click read 117.5 BPM and the grid was a
+  whole beat late by 29 s. The new one also found its own beats 34 ms early (the onset envelope lags), now
+  corrected, and read a 174 BPM loop as 87: the double-time rule compares on- and off-beat energy in linear flux,
+  because the log flux doubled an 87 BPM loop.
+- A voiced line's start sat 43-51 ms before its speech (the silence kept around each trimmed line); it now starts
+  on the speech (3-11 ms).
+- Sketchbook drew Bangla letters out of order: a caller's centred `textAlign` shifted every glyph. The lettering
+  functions set their own alignment, and the Bangla test checks the glyph order.
+- The live-piece limit (240 KB) was above the Studio's document limit (200 KB); it is now 190 KB.
+
+Verified so far (`tests/test_phase6.py`, run one part at a time: 17/17):
+- Beats (5/5): click tracks at 87, 100, 120, 128, 140 and 174 BPM, 60 s each, read exactly, and the grid stays
+  within 1.1 ms of the clicks to the end; drum loops over a pad (87-140 BPM) within 1.4 ms; every bar starts on
+  the kick; a planted drop (20.0-21.4 s) and the hit after it (21.5 s) are found; a real music clip reads
+  100.0 BPM at confidence 0.92.
+- Snap (1/1): three off-beat montage cuts land on the beat after `--apply` (0/3 before; a dry run first).
+- Formats (2/2): one piece renders 1080x1920 and 1920x1080, laid out for each; the piece draws its own
+  storyboard, one panel image and one Studio card per beat.
+- Voice (4/4): Kokoro English lines start 3-7 ms from their speech and the piece is as long as the voice; a
+  re-take moves a later line by 1.89 s and the scenes cued on it; `VW` / `VL` land on the spoken words; Edge
+  Bangla lines start within 5-11 ms, with every word timed.
+- Bangla (2/2): all 7 styles draw a Bangla caption and typing line whole (conjuncts as one cluster, the letters
+  in order), nothing cut off, no page errors.
+- Wiring (3/3): the route planner ranks the shipped styles first for animation; the SKILL.md description is 1022
+  characters; animate's MIT notice ships and is credited.
+- Measured by hand during the build: the cut-paper demo is an 88 KB page and renders frame-identical twice, with
+  WebGL on the GPU (ANGLE, Intel Arc, D3D11); a 6 s demo (144 frames) renders in about 12 s when memory is free;
+  the warm score puts its loudest moment on the payoff (30.0 s) after 1.1 s of silence, at -14.75 LUFS (upbeat:
+  0.9 s, -15.6 LUFS).
+
+Left for later (they need about 4 GB of free memory; the laptop had 0.9-1.3 GB with the owner's other work open,
+and a run under that pressure was stopped by Windows):
+- `styles`: all 7 demos rendered twice (identical frames), the score stems summing to the mix, the GPU report.
+  Cut paper, crosshatch and riso rendered before the starved run timed out; sketchbook, math, pixel and isometric
+  did not.
+- `example` (the 60 s history of AI), `edit` (an insert in the e2e edit, the Studio bundle, doodles over footage,
+  a faceless short), `qa` (planted problems flagged, a clean edit clean), `score` (the 45 s bed in a render).
+- Regressions: test_v2, test_phase2 `--render`, test_phase3, test_port, test_phase4, test_phase5.
+- Run: `PYTHONUTF8=1 scripts/.venv/Scripts/python.exe tests/test_phase6.py <part>`, one part at a time
+  (`P6_STYLES=a,b` picks styles).
+
+Not tested live: a piece playing in the published Studio, `anim capture` on a real site, ElevenLabs lines in
+`anim voice`, macOS.

@@ -1,0 +1,5 @@
+{"about": "lo-fi study bed: swung drums, mellow seventh chords, a dusty pluck",
+ "bpm": [72, 86], "key": "F", "mode": "major", "progression": ["ii7", "V7", "Imaj7", "vi7"], "swing": 0.18,
+ "pad": {"level": 0.045, "cut": 900}, "pluck": {"level": 0.065, "bright": 1600, "pattern": "chord", "every": 4},
+ "bass": {"level": 0.12, "hits": [0, 2.5]}, "drums": {"kick": [0, 2.5], "snare": [1, 3], "hat": [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5], "level": 0.5},
+ "density": {"intro": 0.45, "build": 0.65, "peak": 0.85, "gift": 0.7, "outro": 0.45}}

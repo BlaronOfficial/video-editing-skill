@@ -182,6 +182,19 @@
    "how": "`vedit memory ask \"<what is said>\"` finds the moment in any footage ever transcribed; `vedit assets search` for tagged clips; `vedit watch` to see it."
   },
   {
+   "id": "anim_scene",
+   "label": "Illustrated animated scene as b-roll or an insert (vedit anim)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit anim add <p> <piece> --as insert --at <t>`: acts an idea out (a process, a history, a comparison) while the speaker keeps talking."
+  },
+  {
    "id": "claude_animated",
    "label": "Claude-made animated scene (HTML/GSAP/Three.js/Canvas)",
    "requires": [
@@ -206,6 +219,74 @@
    "licence": "stock",
    "privacy": "local",
    "how": "`vedit sources search <words> --kind video --provider pexels pixabay` (Wikimedia has some CC video too)."
+  },
+  {
+   "id": "webai_video",
+   "label": "Logged-in web AI video (Gemini Veo, Runway, Kling, Luma)",
+   "requires": [
+    "browser",
+    "webai:gemini|webai:runway|webai:kling|webai:luma"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 1,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "Always ask first (quota/credits). Silent clips; add sound in vedit."
+  },
+  {
+   "id": "higgsfield_video",
+   "label": "Higgsfield video / VFX shot",
+   "requires": [
+    "addon:higgsfield"
+   ],
+   "cost": "credits",
+   "quality": 5,
+   "speed": 2,
+   "licence": "ai-service",
+   "privacy": "uploads",
+   "how": "references/higgsfield.md."
+  }
+ ],
+ "animation": [
+  {
+   "id": "anim_styles",
+   "label": "Illustrated animation in a shipped style (cut paper, crosshatch, riso, sketchbook, math, pixel, isometric)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 5,
+   "speed": 2,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit anim new <p> <piece> --style <s>` -> story / look / storyboard check-ins -> `vedit anim render|review` -> `vedit anim add --as insert|short|overlay`. Explainers, histories, little stories, product reels; Bangla and English. references/animation.md"
+  },
+  {
+   "id": "anim_new_style",
+   "label": "Animation in a new look matched from the owner's references",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 1,
+   "licence": "own",
+   "privacy": "local",
+   "how": "anim/grammar/new-style.md: `vedit anim measure|shotlog|compare`, matched frames approved by the owner, then `vedit anim save-style`. New ground until it has carried a piece."
+  },
+  {
+   "id": "claude_animated",
+   "label": "Claude-made animated scene (HTML/GSAP/Three.js/Canvas)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "Full-frame composition: abstract motion, kinetic typography, UI walkthroughs, 2.5D parallax of stills, 3D product cards."
   },
   {
    "id": "webai_video",
@@ -300,6 +381,19 @@
    "licence": "check",
    "privacy": "local",
    "how": "TextItem.capcut_intro etc.; only appears in the CapCut project."
+  },
+  {
+   "id": "anim_overlay",
+   "label": "Hand-drawn doodles over footage: arrows, circles, notes in a style's ink",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit anim new <p> <piece> --overlay --style crosshatch|sketchbook` then `vedit anim add --as overlay --at <t>`."
   }
  ],
  "3d": [
@@ -545,6 +639,19 @@
    "licence": "ai-service",
    "privacy": "uploads",
    "how": "Free tiers are non-commercial: flag before publishing."
+  },
+  {
+   "id": "code_score",
+   "label": "Music made in code, shaped by the edit (vedit score)",
+   "requires": [
+    "core:mg_renderer"
+   ],
+   "cost": "free",
+   "quality": 3,
+   "speed": 4,
+   "licence": "own",
+   "privacy": "local",
+   "how": "`vedit score compose <p> --mood warm|tense|upbeat|lofi|epic|minimal|playful`; a `payoff` marker gets the silence before it and the loudest hit on it. A fallback bed: the owner listens."
   },
   {
    "id": "procedural_bed",

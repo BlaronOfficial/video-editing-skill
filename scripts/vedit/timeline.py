@@ -254,6 +254,7 @@ class AudioClip(_Model):
     enabled: bool = True
     fx: Optional[str] = None                 # id of the CustomFX that produced the source
     sfx: Optional[SfxRef] = None             # set on effects placed from a sound kit
+    sync: Optional[Literal["beats", "bars", "8ths"]] = None   # music: cuts should sit on this grid (QA, `beats snap`)
     label: str = ""
 
     @property

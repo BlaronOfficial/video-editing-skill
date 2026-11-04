@@ -1,0 +1,6 @@
+{"about": "epic lift: wide minor pads, low hits on 1 and 3, rising plucks into the payoff",
+ "bpm": [84, 96], "key": "D", "mode": "minor", "progression": ["i", "VI", "III", "VII"],
+ "pad": {"level": 0.06, "cut": 1700}, "pluck": {"level": 0.07, "bright": 3400, "pattern": "up", "every": 8},
+ "bass": {"level": 0.15, "hits": [0, 2]}, "drone": {"level": 0.05},
+ "drums": {"kick": [0, 2], "snare": [], "hat": [], "boom": [0], "level": 0.7},
+ "density": {"intro": 0.3, "build": 0.65, "peak": 1.0, "gift": 0.9, "outro": 0.4}}

@@ -99,7 +99,14 @@ vedit render <p>               # final only (refuses in plan/step mode until app
 vedit qa <p>                   # issues + frame sheets in edit/qa/
 ```
 Open the QA sheets (Read the PNGs) and fix: flash frames, bad cuts, captions covering faces, overlays
-off-screen, pops, loudness. Re-render (max ~3 rounds) before presenting.
+off-screen, pops, loudness. The report's `measured` block checks:
+- text cut off, under the UI or overlapping (read from the graphics' own pages);
+- still stretches;
+- VO pace;
+- cuts on the beat (music clips with `sync`);
+- the payoff (a `payoff` marker).
+
+Re-render (max ~3 rounds) before presenting.
 
 ## 9. Hand-offs (only those chosen at intake)
 

@@ -12,6 +12,16 @@
 //
 // Usage: node render.mjs --input comp.html --out out.mov [--formats prores,key] [--width 1080 --height 1920]
 //                         [--fps 30] [--duration 4] [--data data.json] [--chrome path] [--still 1.2]
+// Extra passes (each can run alone, without --out):
+//   --stills 0.5,2,3.75 --still-dir dir    one PNG per time (still_<ms>.png)
+//   --board out.png                        the page's own storyboard (window.renderBoard(), animated pieces)
+//   --audio stem [--audio-parts mix,music,sfx]   the page's score: window.renderAudioAll() -> stem_mix/music/sfx.wav
+//                                          (only the parts asked for), or window.renderAudioWav() -> stem_mix.wav
+//   --probe-text out.json [--probe-every 6] every string drawn (canvas fillText/strokeText) or shown (DOM text)
+//                                          on sampled frames, in screen pixels, for the QA text check
+//   --hash-frames 0,12,48                  render those frames forward, then backward, and compare (determinism)
+//   --info                                 just the page's size, duration, TIMELINE (animated pieces) and GPU
+// The printed JSON always carries `gpu`: the WebGL renderer string and whether it is a real GPU.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -40,8 +50,10 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv);
-if (!args.input || (!args.out && !args.still)) {
-  console.error("usage: render.mjs --input comp.html --out out.mov [--formats prores,key,webm,mp4,png]");
+const extraPass = args.info || args.stills || args.board || args.audio || args["probe-text"] || args["hash-frames"];
+if (!args.input || (!args.out && args.still === undefined && !extraPass)) {
+  console.error("usage: render.mjs --input comp.html --out out.mov [--formats prores,key,webm,mp4,png] " +
+    "| --still t | --stills a,b --still-dir d | --board png | --audio stem | --probe-text json | --hash-frames a,b");
   process.exit(2);
 }
 
@@ -121,12 +133,68 @@ const browsers = [await launch()];
 let exitCode = 0;
 const compUrl = `http://127.0.0.1:${port}/${encodeURIComponent(path.basename(inputPath))}`;
 
+// Text probe: record every string a canvas draws (in screen pixels, through the context's transform), so the QA
+// text check sees labels cut off by the frame, overlapping, or under the platform UI. Adapted from animate's
+// tools/textcheck.mjs (MIT, (c) 2026 cth9191). Installed before the page's own scripts run.
+const PROBE_INIT = () => {
+  window.__textlog = [];
+  const P = CanvasRenderingContext2D.prototype;
+  for (const name of ["fillText", "strokeText"]) {
+    const orig = P[name];
+    P[name] = function (str, x, y, maxW) {
+      try {
+        const s = String(str), cv = this.canvas, root = document.querySelector("canvas");
+        // only the visible canvas, or a full-size layer composited onto it at identity (same size)
+        if (s.trim() && cv && root && cv.width === root.width && cv.height === root.height && this.globalAlpha > 0.05) {
+          const m = this.measureText(s), w = maxW != null ? Math.min(m.width, maxW) : m.width;
+          const al = this.textAlign, x0 = al === "center" ? x - w / 2 : al === "right" || al === "end" ? x - w : x;
+          const asc = m.actualBoundingBoxAscent || 0, desc = m.actualBoundingBoxDescent || 0;
+          const tf = this.getTransform();
+          const pts = [[x0, y - asc], [x0 + w, y - asc], [x0 + w, y + desc], [x0, y + desc]]
+            .map(([px, py]) => [tf.a * px + tf.c * py + tf.e, tf.b * px + tf.d * py + tf.f]);
+          // canvas pixels -> CSS pixels of the page (the canvas may be scaled to the viewport)
+          const r = root.getBoundingClientRect(), kx = r.width / root.width, ky = r.height / root.height;
+          const q = pts.map(([px, py]) => [r.left + px * kx, r.top + py * ky]);
+          const xs = q.map((p) => p[0]), ys = q.map((p) => p[1]);
+          window.__textlog.push({ s, kind: "canvas", x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) });
+        }
+      } catch (e) { /* the probe never breaks a render */ }
+      return orig.apply(this, arguments);
+    };
+  }
+};
+const domText = () => {
+  const out = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const vis = (el) => {
+    let a = 1;
+    for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.display === "none" || cs.visibility === "hidden") return 0;
+      a *= Number(cs.opacity);
+    }
+    return a;
+  };
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const s = n.textContent.replace(/\s+/g, " ").trim();
+    const el = n.parentElement;
+    if (!s || !el || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(el.tagName) || vis(el) < 0.05) continue;
+    const rg = document.createRange(); rg.selectNodeContents(n);
+    const rects = [...rg.getClientRects()].filter((r) => r.width > 0.5 && r.height > 0.5);
+    if (!rects.length) continue;
+    out.push({ s, kind: "dom", x0: Math.min(...rects.map((r) => r.left)), y0: Math.min(...rects.map((r) => r.top)),
+      x1: Math.max(...rects.map((r) => r.right)), y1: Math.max(...rects.map((r) => r.bottom)), lines: rects.length });
+  }
+  return out;
+};
+
 async function openPage(width, height, browser = browsers[0]) {
   const page = await browser.newPage();
   page.on("console", (m) => { if (["error", "warning"].includes(m.type())) console.error(`[page ${m.type()}] ${m.text()}`); });
   page.on("pageerror", (e) => console.error(`[page error] ${e.message}`));
   page.on("requestfailed", (r) => console.error(`[missing] ${r.url()}`));
   page.on("response", (r) => { if (r.status() === 404) console.error(`[missing] ${decodeURIComponent(new URL(r.url()).pathname)}`); });
+  if (args["probe-text"]) await page.evaluateOnNewDocument(PROBE_INIT);
   await page.evaluateOnNewDocument((d) => { window.__VEDIT_DATA__ = d; window.__VEDIT_RENDERING__ = true; }, data);
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   await page.goto(compUrl, { waitUntil: "networkidle0", timeout: 60000 });
@@ -165,13 +233,93 @@ try {
   const alpha = !args.opaque;
   const shoot = (p) => p.screenshot({ type: "png", omitBackground: alpha, optimizeForSpeed: true,
     clip: { x: 0, y: 0, width, height }, captureBeyondViewport: false });
+  // Does WebGL run on the GPU here? (headless Chrome falls back to software rendering: correct but slow)
+  const gpu = await page.evaluate(() => {
+    try {
+      const c = document.createElement("canvas"), gl = c.getContext("webgl2") || c.getContext("webgl");
+      if (!gl) return { ok: false, renderer: "no WebGL" };
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const renderer = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return { ok: !/swiftshader|llvmpipe|software|basic render/i.test(renderer), renderer };
+    } catch (e) { return { ok: false, renderer: String(e) }; }
+  });
+  if (!gpu.ok && useGpu) console.error(`[gpu] WebGL runs in software (${gpu.renderer}): correct but slower`);
+  const result = { width, height, fps, duration, gpu };
+  const timeline = await page.evaluate(() => { try { return window.TIMELINE ? JSON.parse(JSON.stringify(window.TIMELINE)) : null; } catch { return null; } });
+  if (timeline) result.timeline = timeline;
+
+  if (args.stills) {
+    const dir = path.resolve(String(args["still-dir"] || path.join(compDir, "stills")));
+    fs.mkdirSync(dir, { recursive: true });
+    result.stills = [];
+    for (const t of String(args.stills).split(",").map(Number).filter((v) => Number.isFinite(v))) {
+      await seek(page, t);
+      const f = path.join(dir, `still_${String(Math.round(t * 1000)).padStart(7, "0")}.png`);
+      fs.writeFileSync(f, await shoot(page));
+      result.stills.push(f);
+    }
+  }
+  if (args.board) {
+    const b64 = await page.evaluate(() => (typeof window.renderBoard === "function"
+      ? window.renderBoard().toDataURL("image/png").split(",")[1] : null));
+    if (!b64) throw new Error("this page has no storyboard (window.renderBoard)");
+    result.board = path.resolve(String(args.board));
+    fs.writeFileSync(result.board, Buffer.from(b64, "base64"));
+  }
+  if (args.audio) {
+    const stem = path.resolve(String(args.audio));
+    const parts = args["audio-parts"] ? String(args["audio-parts"]).split(",").map((s) => s.trim()) : null;
+    const res = await page.evaluate(async (pp) => {
+      if (typeof window.renderAudioAll === "function") return await window.renderAudioAll(pp || undefined);
+      if (typeof window.renderAudioWav === "function") return { mix: await window.renderAudioWav() };
+      return null;
+    }, parts);
+    if (!res) throw new Error("this page has no score (window.renderAudioAll / renderAudioWav)");
+    result.audio = {};
+    for (const [k, b64] of Object.entries(res)) {
+      if (!b64) continue;
+      const f = `${stem}_${k}.wav`;
+      fs.writeFileSync(f, Buffer.from(b64, "base64"));
+      result.audio[k] = f;
+    }
+  }
+  if (args["probe-text"]) {
+    const every = Math.max(1, Number(args["probe-every"]) || 6);
+    const total = Math.max(1, Math.round((duration || 0) * fps));
+    const samples = [];
+    for (let f = 0; f < total; f += every) {
+      await page.evaluate(() => { window.__textlog = []; });
+      await seek(page, f / fps);
+      const canvasItems = await page.evaluate(() => window.__textlog || []);
+      const domItems = await page.evaluate(domText);
+      const anchor = await page.evaluate(() => { try { return typeof window.anchorAt === "function" ? window.anchorAt() : null; } catch { return null; } });
+      samples.push({ t: +(f / fps).toFixed(3), items: [...canvasItems, ...domItems], ...(anchor ? { anchor } : {}) });
+    }
+    result.probe = path.resolve(String(args["probe-text"]));
+    fs.writeFileSync(result.probe, JSON.stringify({ width, height, fps, duration, samples, timeline }, null, 0));
+  }
+  if (args["hash-frames"]) {
+    const { createHash } = await import("node:crypto");
+    const sha = (b) => createHash("sha1").update(b).digest("hex").slice(0, 16);
+    const frs = String(args["hash-frames"]).split(",").map(Number).filter((v) => Number.isFinite(v));
+    const first = [];
+    for (const f of frs) { await seek(page, f / fps); first.push(sha(await shoot(page))); }
+    const bad = [];
+    for (let i = frs.length - 1; i >= 0; i--) { await seek(page, frs[i] / fps); if (sha(await shoot(page)) !== first[i]) bad.push(frs[i]); }
+    result.hashes = Object.fromEntries(frs.map((f, i) => [f, first[i]]));
+    result.deterministic = bad.length === 0;
+    if (bad.length) result.nondeterministic_frames = bad;
+  }
 
   if (args.still !== undefined) {
     await seek(page, Number(args.still) || 0);
     const buf = await shoot(page);
     const out = path.resolve(args.out || inputPath.replace(/\.html?$/i, ".png"));
     fs.writeFileSync(out, buf);
-    console.log(JSON.stringify({ still: out, width, height }));
+    console.log(JSON.stringify({ ...result, still: out }));
+  } else if (!args.out) {
+    console.log(JSON.stringify(result));
   } else {
     if (!duration) throw new Error("No duration: pass --duration or set data-duration on the composition root");
     const formats = String(args.formats || "prores").split(",").map((s) => s.trim()).filter(Boolean);
@@ -215,7 +363,10 @@ try {
     });
     // Capture in parallel pages (each seeks independently), then encode the sequence once.
     const frames = Math.max(1, Math.round(duration * fps));
-    const workers = Math.max(1, Math.min(Number(args.workers) || Math.min(4, Math.max(1, Math.floor(os.cpus().length / 4))), frames));
+    // Each worker is a whole headless Chrome (with its GPU process ~0.6-0.9 GB): by default, as many as the CPU
+    // and the free memory allow (a 16 GB laptop with the owner's own apps open can't spare four).
+    const memCap = Math.max(1, Math.floor((os.freemem() / 1e9 - 1.5) / 0.9));
+    const workers = Math.max(1, Math.min(Number(args.workers) || Math.min(4, Math.max(1, Math.floor(os.cpus().length / 4)), memCap), frames));
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vedit-mg-"));
     const t0 = Date.now();
     const pages = [page];
@@ -240,7 +391,7 @@ try {
     fs.rmSync(tmp, { recursive: true, force: true });
     if (code !== 0) throw new Error(`ffmpeg exited with ${code}`);
     const total = (Date.now() - t0) / 1000;
-    console.log(JSON.stringify({ outputs, frames, fps, width, height, duration, workers, seconds: total,
+    console.log(JSON.stringify({ ...result, outputs, frames, fps, width, height, duration, workers, seconds: total,
       timing: { launch: tLaunch, capture: tCapture, encode: total - tLaunch - tCapture } }));
   }
 } catch (err) {

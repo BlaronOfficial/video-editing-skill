@@ -21,8 +21,12 @@ Logos: `logo_sting` intro/outro, small corner bug as an image overlay (opacity 0
 
 ## Clone a creator's style
 1. Get 1-3 reference videos (the user's files, or downloads they are entitled to use).
-2. `vedit style analyze <name> ref1.mp4 ref2.mp4 --out edit/style_<name>` → measures cuts/min, shot
-   length, loudness, colour (saturation/brightness/contrast/warmth) and writes frame sheets.
+2. `vedit style analyze <name> ref1.mp4 ref2.mp4 --out edit/style_<name>` measures:
+   - cuts/min, shot length, loudness, colour (saturation/brightness/contrast/warmth), with frame sheets;
+   - `rhythm`, second by second (`*_shotlog.json`): hard cuts (not counting on-2s stepped animation or
+     flicker), held stretches, the busiest seconds, the loudest moment and the quiet before it.
+
+   Map the reference's beats onto the new subject rather than reskinning them.
 3. **Look at the frame sheets** and fill the `observations` (captions look, graphics, b-roll, transitions,
    sound, hook) in `personal/styles/<name>.json`, plus concrete settings (captions.style + overrides,
    color.preset, pacing, graphics palette/fonts). Save it with `vedit style save --file <json>`.

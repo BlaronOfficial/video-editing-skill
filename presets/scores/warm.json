@@ -1,0 +1,5 @@
+{"about": "a gentle explainer bed: soft pad, a plucked arpeggio, a round bass, a light kick",
+ "bpm": [84, 100], "key": "D", "mode": "major", "progression": ["I", "V", "vi", "IV"],
+ "pad": {"level": 0.05, "cut": 1100}, "pluck": {"level": 0.075, "bright": 2600, "pattern": "updown", "every": 8},
+ "bass": {"level": 0.13, "hits": [0, 2]}, "drums": {"kick": [0, 2], "snare": [], "hat": [], "level": 0.55},
+ "density": {"intro": 0.35, "build": 0.6, "peak": 0.85, "gift": 0.75, "outro": 0.4}}

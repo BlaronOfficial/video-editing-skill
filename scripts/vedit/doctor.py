@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import config
 from .paths import IS_WINDOWS, SKILL_ROOT, fonts_dir, mg_dir, personal_dir
-from .util import which
+from .util import read_json, which
 
 
 def _version(cmd: list[str]) -> str | None:
@@ -49,6 +49,14 @@ def check() -> dict:
     from .mg import chrome
     c = chrome()
     add("chrome/edge (mg rendering)", c is not None, str(c or ""), "Install Google Chrome or Microsoft Edge")
+    try:                                      # measured by `vedit capabilities` (not re-probed here: doctor stays fast)
+        from .capabilities import _path as caps_path
+        wg = (((read_json(caps_path(), default={}) or {}).get("engine") or {}).get("core") or {}).get("webgl")
+    except Exception:
+        wg = None
+    if wg:
+        add("WebGL on the GPU (3D templates, animated pieces)", bool(wg.get("ok")), wg.get("renderer", ""),
+            "Update the graphics driver: rendering still works in software, many times slower", required=False)
     n_fonts = len(list(fonts_dir().glob("*.ttf")))
     add("fonts", n_fonts >= 15, f"{n_fonts} fonts in .cache/fonts", "Run `vedit setup fonts`")
     try:

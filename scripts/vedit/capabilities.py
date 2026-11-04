@@ -80,7 +80,27 @@ def core() -> dict:
         "hw_encoders": working, "node": bool(which("node")), "chrome": str(chrome() or ""),
         "mg_renderer": renderer_ready(), "fonts": len(list(fonts_dir().glob("*.ttf"))),
         "whisper_models": whisper, "three_js": (mg_dir() / "renderer" / "node_modules" / "three").exists(),
+        "webgl": webgl() if renderer_ready() else None,
     }
+
+
+def webgl() -> dict | None:
+    """Does headless Chrome reach the GPU for WebGL (3D templates, animated pieces)? Software rendering
+    (SwiftShader) is correct but many times slower."""
+    import json as _json
+    import tempfile
+    from .mg import _node
+    page = Path(tempfile.gettempdir()) / "vedit_webgl_probe.html"
+    page.write_text("<!doctype html><body data-duration=1></body>", encoding="utf-8")
+    try:
+        r = subprocess.run([_node(), str(mg_dir() / "renderer" / "render.mjs"), "--input", str(page), "--info",
+                            "--width", "16", "--height", "16"], capture_output=True, text=True, timeout=120)
+        line = next((l for l in reversed((r.stdout or "").splitlines()) if l.startswith("{")), None)
+        return _json.loads(line).get("gpu") if line else None
+    except Exception:
+        return None
+    finally:
+        page.unlink(missing_ok=True)
 
 
 def collect(*, refresh: bool = False) -> dict:

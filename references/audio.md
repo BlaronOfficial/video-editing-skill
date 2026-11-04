@@ -15,9 +15,53 @@ isolation are stronger; the owner decides.
 - Stop-downs: effects placed from a kit on big moments (hit, drop, long whoosh, swell) dip the music for
   ~0.4 s before the hit and bring it back on it (earshot's mix rule: one gesture at a time, nothing ducks
   under every effect). Automatic; shown in the Studio's playback too.
-- Fit: start on a downbeat; end with a fade or on a phrase end. `vedit beats <file>` gives BPM, beat and
-  onset times: cut b-roll and land text_punch/emoji_pop on beats.
+- Fit: start on a downbeat; end with a fade or on a phrase end. Land text_punch/emoji_pop on beats.
 - Loop short tracks with `"loop": true`.
+
+### The beat map, and cuts on the beat
+
+`vedit beats <file> [--start 12] [--dur 30] [--bpm 128 | --bpm 70-180]` maps a track. It returns:
+- `bpm`, `offset` (the first beat) and `beats`;
+- `downbeats` (bar starts);
+- `hits` (the strongest onsets: where the big moments go);
+- `loudest` (the loudest 100 ms) and `quiet` (drops);
+- `other_tempos` and `confidence` (the share of beats with an onset on them).
+
+How it works:
+- It fits the grid to the onsets over the whole track, so it stays on the beat to the end. On 60 s test tracks
+  at 87-174 BPM the worst error was 1-2 ms; the old map read 120 BPM as 117.5 and was a whole beat late after
+  29 s.
+- Constant tempo is assumed. Double or half time is the usual miss: check `other_tempos`, and pass `--bpm` when
+  the owner knows the tempo.
+
+Snapping cuts to the beat:
+- Mark a music clip `"sync": "beats"` (or `"bars"`, `"8ths"`) when the cuts should sit on it. QA then reports how
+  many cuts are on the grid (`beat_grid`).
+- `vedit beats snap <p> --music <id> [--grid beats|bars|8ths] [--tolerance 0.12]` moves the cuts onto the grid.
+  - It is a dry run first; add `--apply` to keep the moves.
+  - A main-track cut lengthens or shortens the clip before it, and everything after moves with the picture.
+    Music stays put.
+  - A cut never moves into a word: no revealing a cut word, no clipping a kept one.
+
+### Music made in code (a fallback bed)
+
+`vedit score compose <p> --mood warm|tense|upbeat|lofi|epic|minimal|playful [--bpm] [--key] [--payoff 30]` writes
+a bed shaped by the edit:
+- its length;
+- a sweep into each chapter marker;
+- around the payoff (a `payoff` marker, or `--payoff`): a hard stop into a short silence, the loudest hit on the
+  payoff, a held chord, then a decay.
+
+How it is made and added:
+- It is played by the synth from the animation kit (pad, pluck, bass, drums, risers, chimes, reverb) and
+  rendered headless.
+- It goes in as a music clip: 0 dB when nothing is said, -12 dB and ducked under speech.
+
+Notes:
+- **Licence:** it is the owner's, with no licence limits.
+- **Ranking:** it ranks below the owner's tracks and good library music.
+- **Listening:** Claude can't hear it. QA measures the silence before the payoff; the owner listens.
+- **Moods:** `vedit score moods` lists them; a personal mood is a JSON in `personal/scores/`.
 
 ## Sound effects: kits, cues, placement
 

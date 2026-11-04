@@ -104,7 +104,10 @@ def write_wav(path: str | Path, x: np.ndarray, sr: int = SR) -> Path:
     return path
 
 
-def _trim(x: np.ndarray, keep: float = 0.04) -> tuple[np.ndarray, float]:
+TRIM_KEEP = 0.04            # silence kept before and after each spoken sentence (seconds)
+
+
+def _trim(x: np.ndarray, keep: float = TRIM_KEEP) -> tuple[np.ndarray, float]:
     """Cut silence at both ends (-42 dB below the peak, 10 ms frames); returns (audio, seconds cut at the start)."""
     if not len(x):
         return x, 0.0
@@ -250,12 +253,30 @@ def _synth(voice: str, sents: list[str], parts: Path, *, speed: float) -> list[d
 
 
 def say(script: str, out: str | Path, voice: str, *, speed: float = 1.0, language: str | None = None,
-        align: str | bool = "auto") -> dict:
-    """Speak `script` with `voice` into `out` (48 kHz mono WAV) plus `<out>.transcript.json`."""
+        align: str | bool = "auto", lines: list[dict] | None = None, lead: float = 0.12, tail: float = 0.25) -> dict:
+    """Speak `script` with `voice` into `out` (48 kHz mono WAV) plus `<out>.transcript.json`.
+
+    `lines` = [{id, text, after}] speaks a script line by line with each line's own pause after it (one beat of
+    an animation per line); the transcript then carries `lines` with each line's start, end and words. `lead`
+    and `tail` are the silences before the first and after the last line.
+    """
     out = Path(out).with_suffix(".wav")
     info = row(voice)
+    owner: list[int] | None = None
+    if lines:
+        pairs, owner = [], []
+        for li, line in enumerate(lines):
+            ps = T.sentences(T.clean(str(line.get("text", ""))))
+            if not ps:
+                raise VeditError(f"Script line {line.get('id', li + 1)} is empty.")
+            for k, (sent, pause) in enumerate(ps):
+                pairs.append((sent, float(line.get("after", 0.45)) if k == len(ps) - 1 else pause))
+                owner.append(li)
+        pairs[-1] = (pairs[-1][0], 0.0)                              # the tail follows the last line
+        script = "\n".join(str(line.get("text", "")) for line in lines)
+    else:
+        pairs = T.sentences(T.clean(script))
     lang = language or info.get("language") or ("bn" if T.is_bangla(script) else "en")
-    pairs = T.sentences(T.clean(script))
     if not pairs:
         raise VeditError("Nothing to say: the script is empty after clean-up.")
     sents = [s for s, _ in pairs]
@@ -264,7 +285,6 @@ def say(script: str, out: str | Path, voice: str, *, speed: float = 1.0, languag
     t0 = time.time()
     produced = _synth(voice, sents, parts, speed=speed)
     t_synth = time.time() - t0
-    lead = 0.12
     chunks, spans, words, cursor = [np.zeros(int(lead * SR), np.float32)], [], [], lead
     if len(produced) == 1 and produced[0].get("whole"):            # one take for the whole script (ElevenLabs)
         x = load_audio(produced[0]["wav"])
@@ -289,7 +309,7 @@ def say(script: str, out: str | Path, voice: str, *, speed: float = 1.0, languag
             if pause:
                 chunks.append(np.zeros(int(pause * SR), np.float32))
                 cursor += pause
-    chunks.append(np.zeros(int(0.25 * SR), np.float32))
+    chunks.append(np.zeros(int(tail * SR), np.float32))
     audio = np.concatenate(chunks)
     peak = float(np.abs(audio).max()) or 1.0
     audio = audio * min(1.0, 0.89 / peak)                           # -1 dBFS headroom, never louder than made
@@ -318,12 +338,38 @@ def say(script: str, out: str | Path, voice: str, *, speed: float = 1.0, languag
                   "segments": [{"s": round(a, 3), "e": round(b, 3), "text": s} for (a, b), s in zip(spans, sents)],
                   "script": script, "alignment": {"method": method, "matched": matched},
                   "licence": {k: info.get(k) for k in ("licence", "commercial", "online")}}
+    if lines:
+        transcript["lines"] = _line_spans(lines, owner or [], spans, words)
     tpath = out.with_suffix(".transcript.json")
     write_json(tpath, transcript)
     return {"audio": str(out), "transcript": str(tpath), "duration": dur, "voice": voice, "language": lang,
             "sentences": len(sents), "words": len(words), "alignment": transcript["alignment"],
             "licence": info["licence"], "commercial": info["commercial"], "online": info["online"],
             "seconds": round(time.time() - t0, 1), "timing": {"speech": round(t_synth, 1), "align": round(t_align, 1)}}
+
+
+def _line_spans(lines: list[dict], owner: list[int], spans: list[tuple[float, float]], words: list[dict]) -> list[dict]:
+    """Each script line's start and end (its first and last sentence) and the words spoken inside it."""
+    out = []
+    one_take = len(spans) == 1 and len(owner) > 1                    # ElevenLabs: one take, split by word counts
+    if one_take:
+        k = 0
+        for line in lines:
+            n = len(T.words(str(line.get("text", ""))))
+            ws = words[k:k + n] or words[k:k + 1]
+            k += n
+            out.append({"id": str(line.get("id", len(out) + 1)), "text": line.get("text", ""),
+                        "t0": ws[0]["s"] if ws else 0.0, "t1": ws[-1]["e"] if ws else 0.0,
+                        "words": [{"w": w["w"], "t0": w["s"], "t1": w["e"]} for w in ws]})
+        return out
+    for li, line in enumerate(lines):
+        idx = [i for i, o in enumerate(owner) if o == li]
+        # a sentence's audio keeps TRIM_KEEP of silence at each end: the line starts and ends with the speech
+        t0, t1 = spans[idx[0]][0] + TRIM_KEEP, spans[idx[-1]][1] - TRIM_KEEP
+        ws = [w for w in words if t0 - 0.05 <= (w["s"] + w["e"]) / 2 <= t1 + 0.05]
+        out.append({"id": str(line.get("id", li + 1)), "text": line.get("text", ""), "t0": round(t0, 3), "t1": round(t1, 3),
+                    "words": [{"w": w["w"], "t0": w["s"], "t1": w["e"]} for w in ws]})
+    return out
 
 
 # ------------------------------------------------------------------ word timing

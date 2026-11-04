@@ -144,14 +144,28 @@ def analyze_reference(videos: list[str | Path], name: str, out_dir: Path) -> dic
         times = list(np.linspace(info.duration * 0.05, info.duration * 0.95, 12)) if info.duration else []
         sheet = frames_at(v, times, out_dir / f"{Path(v).stem}_frames.png", width=240)
         sheets.append(str(sheet))
-        per.append({
+        row = {
             "video": v, "duration": round(info.duration, 1), "aspect": f"{info.display_size[0]}x{info.display_size[1]}",
             "cuts_per_min": round(len(cuts) / max(info.duration / 60, 1e-6), 1),
             "avg_shot_s": round(float(shots.mean()), 2) if shots.size else None,
             "median_shot_s": round(float(np.median(shots)), 2) if shots.size else None,
             "loudness": measure_loudness(v) if info.has_audio else {},
             "color": _frame_stats(v, times[::2]),
-        })
+        }
+        # second by second (adapted from animate's shot logger, MIT): where the cuts cluster, held stretches,
+        # how loud each second is, the loudest moment and what comes before it (a reference's rhythm and arc)
+        try:
+            from .anim.refs import shotlog
+            sl = shotlog(v)
+            write_json(out_dir / f"{Path(v).stem}_shotlog.json", sl)
+            ps = sl["per_second"]
+            row["rhythm"] = {"hard_cuts": len(sl["cuts"]), "stepped_on_2s": sl["stepped_on_2s"][:6],
+                             "held_seconds": sum(1 for r in ps if r.get("held", 0) >= 80),
+                             "busiest_seconds": [r["s"] for r in sorted(ps, key=lambda r: -r["cuts"])[:5] if r["cuts"]],
+                             "loudest": sl["loudest"], "shotlog": str(out_dir / f"{Path(v).stem}_shotlog.json")}
+        except Exception as exc:              # the per-second log adds detail; it never blocks the clone
+            row["rhythm"] = {"error": str(exc)[:200]}
+        per.append(row)
     profile = {
         "name": name, "kind": "creator_clone", "created": time.strftime("%Y-%m-%d %H:%M"),
         "description": f"Style learned from {len(per)} reference video(s).",

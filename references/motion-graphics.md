@@ -72,6 +72,23 @@ Look at the still/sheet before using it. Iterate on spacing, hierarchy, timing.
 - Leave the face clear. Use `callout`/`highlight_box` to point, not to cover.
 - Consistency: same entrance language across a video (pick 1-2 easing families).
 
+## Animated pieces
+
+An illustrated animation (`vedit anim`, `references/animation.md`) is a composition like any other: a one-file
+canvas page with `window.__seek`. `vedit anim add` places it as an overlay (`mg.file: anim/<piece>/index.html`,
+opaque MP4 or alpha for doodles), so the cache, the Studio and the hand-offs treat it like the rest.
+
+## Renderer passes (for checks)
+
+`mg/renderer/render.mjs` also renders, without a video:
+- `--stills` (frames at chosen times) and `--board` (a page's storyboard);
+- `--audio` (a page's score: mix, music and sfx stems);
+- `--probe-text` (every string drawn or shown, in screen pixels: QA's text check);
+- `--hash-frames` (determinism) and `--info`.
+
+Every run also reports `gpu`: whether WebGL runs on the GPU. Here it is the Intel Arc via ANGLE/D3D11; it
+warns when Chrome falls back to software.
+
 ## Alpha formats and CapCut
 Renders produce `.webm` (VP9 alpha, used by the MP4 render) plus `.mov` (ProRes 4444) and/or
 `_key.mp4` (green screen) for CapCut, depending on `capcut.alpha_overlays` (set once with
