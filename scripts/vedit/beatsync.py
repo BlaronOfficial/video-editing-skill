@@ -2,7 +2,7 @@
 sit on it (QA `beat_grid`, for music clips marked `sync: "beats" | "bars" | "8ths"`).
 
 Snapping ripples like an editor's trim: a moved main-track cut lengthens or shortens the clip before it and
-everything after it moves with the picture (overlays, texts, effects, b-roll, sound effects, VO, markers), while
+everything after it moves with the picture (overlays, texts, effects, b-roll, sound effects, VO, markers, captions), while
 music stays put, because the music is the grid. A cut never moves into a word: extending must not reveal a word
 that was cut out, and trimming must not cut a kept word.
 """
@@ -137,6 +137,11 @@ def _ripple(e: Edit, t: float, d: float, *, keep_music: bool = True) -> None:
     for fx in e.custom_fx:
         if fx.start >= t - 1e-6 and not fx.anchor:
             fx.start = round(max(0.0, fx.start + d), 4)
+    for ch in e.captions.chunks:      # word-built chunks are rebuilt at render; hand-written ones (translations, v1)
+        if ch.start >= t - 1e-6:      # keep their times, so they move with the picture
+            ch.start, ch.end = round(max(0.0, ch.start + d), 4), round(max(0.0, ch.end + d), 4)
+            for w in ch.words:
+                w.s, w.e = round(max(0.0, w.s + d), 4), round(max(0.0, w.e + d), 4)
 
 
 def snap(edit: Edit, music_id: str, *, grid: str = "beats", tolerance: float = 0.12) -> tuple[Edit, list[dict]]:

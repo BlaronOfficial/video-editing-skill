@@ -208,7 +208,7 @@ def measured_checks(edit: Edit, render_path: Path, out_dir: Path) -> dict:
     rep: dict = {}
     W, H = edit.canvas.width, edit.canvas.height
     safe = checks.safe_zone(W, H)
-    mg_dir = Path(render_path).parent.parent / "mg"
+    mg_dir = Path(out_dir).parent / "mg"                   # out_dir is the project's qa/ (the render may be anywhere)
 
     # text: every live-HTML overlay drawn at the frame's own size, and caption words that can't wrap
     texts = []

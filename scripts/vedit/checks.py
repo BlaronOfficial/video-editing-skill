@@ -95,6 +95,21 @@ def text_issues(probe_data: dict, *, offset: float = 0.0, safe: dict | None = No
     return sorted(out, key=lambda r: r["at"])
 
 
+def _ass_em(path: Path) -> float:
+    """libass sizes a font by its Windows cell height (OS/2 usWinAscent + usWinDescent), not by its em, so a
+    Fontsize of N draws glyphs at N * unitsPerEm / (winAscent + winDescent) px (0.71 for Poppins)."""
+    import struct
+    try:
+        b = Path(path).read_bytes()
+        n = struct.unpack(">H", b[4:6])[0]
+        tabs = {b[12 + 16 * i:16 + 16 * i]: struct.unpack(">I", b[20 + 16 * i:24 + 16 * i])[0] for i in range(n)}
+        upem = struct.unpack(">H", b[tabs[b"head"] + 18:tabs[b"head"] + 20])[0]
+        win = sum(struct.unpack(">HH", b[tabs[b"OS/2"] + 74:tabs[b"OS/2"] + 78]))
+        return upem / win if upem and win else 1.0
+    except Exception:
+        return 1.0
+
+
 def caption_word_overflow(edit, chunks) -> list[dict]:
     """A caption word wider than the frame can't wrap (libass wraps between words, not inside one)."""
     from PIL import ImageFont
@@ -104,15 +119,21 @@ def caption_word_overflow(edit, chunks) -> list[dict]:
     if edit.captions.uppercase is not None:
         style = {**style, "uppercase": edit.captions.uppercase}
     W, H = edit.canvas.width, edit.canvas.height
-    px = max(12, round(style["size"] * min(W, H)))
-    limit = W - 80
+    px = max(12, round(style["size"] * min(W, H)))                 # the ASS Fontsize captions.to_ass writes
+    limit = W - 80                                                 # MarginL + MarginR = 40 + 40
+    outline = style["stroke_width"] * px if style.get("stroke") else 0.0
+    spacing = float(style.get("letter_spacing", 0) or 0)
+
+    files = sorted(fonts_dir().glob("*.ttf"))                      # bundled as Family-Style.ttf
 
     def font_for(name: str):
         key = name.replace(" ", "").replace("-", "").lower()
-        for f in fonts_dir().glob("*.ttf"):
-            if f.stem.replace("-", "").replace(" ", "").lower() == key:
-                return ImageFont.truetype(str(f), px)
-        return None
+        fam = {f: f.stem.split("-")[0].lower() for f in files}
+        sty = {f: (f.stem.split("-")[1] if "-" in f.stem else "regular").lower() for f in files}
+        pick = (next((f for f in files if fam[f] + sty[f] == key), None)             # "Poppins ExtraBold"
+                or next((f for f in files if fam[f] == key and sty[f] == "regular"), None)   # "Anton"
+                or next((f for f in files if fam[f] == key), None))                   # "Atma" (Bold only)
+        return ImageFont.truetype(str(pick), max(6, round(px * _ass_em(pick)))) if pick else None
 
     fonts = {False: font_for(style["font"]), True: font_for(style.get("font_bangla", style["font"]))}
     out = []
@@ -122,7 +143,7 @@ def caption_word_overflow(edit, chunks) -> list[dict]:
         if font is None:
             continue
         for w in _display(c.text, style).split():
-            width = font.getlength(w)
+            width = font.getlength(w) + spacing * max(0, len(w) - 1) + 2 * outline
             if width > limit:
                 out.append({"kind": "text_cut", "at": round(c.start, 2), "text": w,
                             "msg": f"caption word \"{w}\" is {width:.0f}px wide on a {W}px frame: it can't wrap; "
@@ -175,7 +196,10 @@ def change_curve(frames: tuple[np.ndarray, float]) -> tuple[np.ndarray, float]:
     fr, rate = frames
     if len(fr) < 2:
         return np.zeros(len(fr)), rate
-    d = np.abs(np.diff(fr.astype(np.int16), axis=0)).mean(axis=(1, 2))
+    d = np.empty(len(fr) - 1)
+    for i in range(0, len(fr) - 1, 512):          # in chunks: an hour of frames never becomes one int16 copy
+        a = fr[i:i + 513].astype(np.int16)
+        d[i:i + len(a) - 1] = np.abs(np.diff(a, axis=0)).mean(axis=(1, 2))
     return np.r_[0.0, d], rate
 
 

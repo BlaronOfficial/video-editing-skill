@@ -8,7 +8,7 @@ from CapCut's online library (music, SFX, stickers, templates), and visual confi
 - **Claude Code Desktop app** (Windows/macOS): built-in computer use. Enable it in Settings; tools are
   `mcp__computer-use__*` (screenshot, click, type, key, scroll).
 - **Windows-MCP from the CLI**: `claude mcp add --scope user --transport stdio windows-mcp -- uvx windows-mcp serve`
-  (Python 3.13+). Tools: `Screenshot`, `Snapshot`, `Click`, `Type`, `Shortcut`, `Scroll`, `Move`, `App`, `WaitFor`.
+  (Python 3.14+ from Windows-MCP 0.8; the 0.7 build the Claude app installs runs on 3.13). Tools: `Screenshot`, `Snapshot`, `Click`, `Type`, `Shortcut`, `Scroll`, `Move`, `App`, `WaitFor`.
 - **Neither**: `vedit screen shot --out shot.png` lets you see the screen; `vedit screen click --x --y`
   and `vedit screen keys` act only when CapCut owns the foreground. Prefer asking the user to click.
 CapCut draws a custom UI, so accessibility trees are thin: work from screenshots and coordinates.

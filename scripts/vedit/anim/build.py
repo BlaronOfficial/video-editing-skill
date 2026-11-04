@@ -89,6 +89,11 @@ def _compile_check(script: str) -> str | None:
     return (p.stderr or "syntax error").strip() if p.returncode else None
 
 
+def _js(v) -> str:
+    """JSON inside the page's <script>: a "</script>" or "<!--" in the data (a narration line) can't end it."""
+    return json.dumps(v, ensure_ascii=False).replace("<", "\\u003c")
+
+
 def build(piece_dir: str | Path) -> dict:
     """Build <piece>/index.html. Returns {path, bytes, lines, style, parts, extras, studio_live}."""
     root = Path(piece_dir)
@@ -121,12 +126,12 @@ def build(piece_dir: str | Path) -> dict:
     extras = []
     if (root / "beats.json").exists():
         inject.append("// ---- beats.json (vedit anim beats): the supplied track's tempo, beats, bars and hits\n"
-                      f"const BEATS = {json.dumps(read_json(root / 'beats.json'), ensure_ascii=False)};")
+                      f"const BEATS = {_js(read_json(root / 'beats.json'))};")
         extras.append("beats.json")
     if (root / "voice.json").exists():
         v = read_json(root / "voice.json")
         inject.append("// ---- voice.json (vedit anim voice): the voice-over's lines and word times\n"
-                      f"const VOICE = {json.dumps(v, ensure_ascii=False)};")
+                      f"const VOICE = {_js(v)};")
         extras.append("voice.json")
     assets = sorted(f for f in (root / "assets").glob("*") if f.suffix.lower().lstrip(".") in MIME) \
         if (root / "assets").exists() else []
