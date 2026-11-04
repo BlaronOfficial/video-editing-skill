@@ -22,6 +22,13 @@ vedit is MIT-licensed. It builds on these projects; their licences apply to thei
 | [Depth-Anything-V2-Small](https://github.com/DepthAnything/Depth-Anything-V2), ONNX by [onnx-community](https://huggingface.co/onnx-community/depth-anything-v2-small) | depth (3D photos, depth of field); only the Small model (the larger ones are non-commercial) | Apache-2.0 | downloaded when asked (27 MB) |
 | [BiRefNet](https://github.com/ZhengPeng7/BiRefNet) lite, ONNX by [onnx-community](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) | object cut-outs for stills | MIT | optional download (224 MB) |
 | [Blender](https://www.blender.org) | optional 3D renders (templates in `blender/`) | GPL (separate app) | run as a subprocess; never bundled |
+| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 (with espeak-ng) | offline speech synthesis runtime | Apache-2.0 (espeak-ng GPL-3.0 inside) | isolated venv (`vedit setup voice`), subprocess |
+| [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) by hexgrad (sherpa-onnx export) | offline voices | Apache-2.0 | downloaded when asked (132 MB) |
+| [comprehensive-bangla-tts](https://github.com/mobassir94/comprehensive-bangla-tts) (Coqui VITS, female), trained on the [IIT Madras Indic TTS](https://www.iitm.ac.in/donlab/indictts/) database | offline Bangla voice | MIT code; data under the IIT Madras licence (keep the TTS Consortium / IIT Madras notice) | downloaded when asked (108 MB) |
+| [Mimic 3](https://github.com/MycroftAI/mimic3-voices) Bangla voice (Mycroft; CMU Indic + Google OpenSLR 37 data) | offline Bangla voices (16 speakers) | CC BY-SA 4.0 | downloaded when asked (80 MB) |
+| [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) by Kyutai (ONNX export by KevinAHM, sherpa-onnx) | voice cloning from a short reference | CC BY 4.0 weights + prohibited-use terms (consent required) | downloaded when asked (98 MB) |
+| [OpenVoice V2](https://github.com/myshell-ai/OpenVoice) by MyShell | tone-colour conversion (the owner's voice in any language) | MIT | isolated PyTorch venv (`vedit setup openvoice`), subprocess; the watermark module is not loaded |
+| [edge-tts](https://github.com/rany2/edge-tts) | Microsoft Edge online voices | LGPL-3.0 (service terms separate) | isolated venv, subprocess |
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) / Silero VAD | transcription, no-speech gate | MIT | core dependency |
 | [vtracer](https://github.com/visioncortex/vtracer) | icon vectorizing | MIT | isolated venv on first use |
 | [GSAP](https://gsap.com), [three.js](https://threejs.org), [lottie-web](https://github.com/airbnb/lottie-web) | motion graphics runtime | GSAP standard licence (free), MIT, MIT | loaded from CDNs / npm |

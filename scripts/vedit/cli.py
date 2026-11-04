@@ -56,6 +56,9 @@ def cmd_setup(a):
     if what == "otio":
         from .exports import otio
         out["otio"] = otio.setup()
+    if what in ("voice", "openvoice"):
+        from .voice import engine
+        out[what] = engine.setup(what)
     print_json(out)
 
 
@@ -621,7 +624,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sp.add_parser("doctor", help="check the environment"); s.add_argument("--json", action="store_true"); s.set_defaults(fn=cmd_doctor)
     s = sp.add_parser("setup", help="install fonts, renderer deps, whisper model")
-    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts", "earshot", "crv", "otio"])
+    s.add_argument("what", nargs="?", default="all", choices=["all", "fonts", "renderer", "whisper", "install-fonts", "earshot", "crv", "otio",
+                                                         "voice", "openvoice"])
     s.add_argument("--force", action="store_true"); s.add_argument("--whisper", action="store_true"); s.add_argument("--model")
     s.add_argument("--ears", action="store_true", help="earshot: also torch CPU + listening models (~1.3 GB)")
     s.set_defaults(fn=cmd_setup)
@@ -742,6 +746,12 @@ def build_parser() -> argparse.ArgumentParser:
     from . import blender
     from .vfx import cli as vfx_cli
     vfx_cli.register_cli(sp)
+    from .voice import cli as voice_cli
+    voice_cli.register_cli(sp)
+    from . import env
+    env.register_cli(sp)
+    from . import analytics
+    analytics.register_cli(sp)
     blender.register_cli(sp)
     extensions.register_cli(sp)
     return ap

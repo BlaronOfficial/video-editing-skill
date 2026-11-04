@@ -3,4 +3,19 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
+# A venv only runs on the system that made it. When this folder is shared with Windows (the Claude app's
+# Linux VM mounts it under ~/mnt/), keep the engine's venv in the VM instead of fighting over scripts/.venv.
+# (Git Bash on Windows is Windows: it uses scripts/.venv like vedit.cmd.)
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) ;;
+  *)
+    if [ -z "$UV_PROJECT_ENVIRONMENT" ]; then
+      case "$DIR" in
+        */mnt/*) export UV_PROJECT_ENVIRONMENT="${VEDIT_VENV:-$HOME/.cache/vedit/venv}" ;;
+        *) if [ -e "$DIR/scripts/.venv/Scripts/python.exe" ]; then
+             export UV_PROJECT_ENVIRONMENT="${VEDIT_VENV:-$HOME/.cache/vedit/venv}"
+           fi ;;
+      esac
+    fi ;;
+esac
 exec uv run --quiet --project "$DIR/scripts" vedit "$@"

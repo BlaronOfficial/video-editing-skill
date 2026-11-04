@@ -201,16 +201,23 @@ def _clip_segment(edit: Edit, clip: Clip, s: RenderSettings, work: Path, *, head
     has_audio = src.kind != "image" and info.has_audio and not clip.mute
     if not has_audio:
         args += ["-f", "lavfi", "-t", f"{out_dur:.4f}", "-i", "anullsrc=r=48000:cl=stereo"]
+    if src.kind == "audio":
+        # a voiceover (or music) on the main track: the picture is the canvas colour; b-roll and graphics go above
+        args += ["-f", "lavfi", "-t", f"{out_dur:.4f}", "-i", f"color=c={edit.canvas.background}:s={W}x{H}:r={fps}"]
+        n_vid = 2 if not has_audio else 1
+        vgraph = (f"[{n_vid}:v]format=yuv420p,setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
+                  f",trim=duration={out_dur:.4f}[vout]")
 
     iw, ih = info.display_size
     from .fx import clip_prefilters, fps_filter
-    pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=src_in, t=dur_src, tracks=s.tracks,
-                                                          project_root=s.project_root)
-    v = ["[0:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.5f}", fps_filter(clip, fps)])]
-    v += _frame_chain(edit, clip, s, work, iw, ih, content_dur)
-    if pad_h or pad_t:
-        v.append(f"tpad=start_mode=clone:start_duration={pad_h:.4f}:stop_mode=clone:stop_duration={pad_t:.4f}")
-    vgraph = ",".join(v) + "[vout]"
+    if src.kind != "audio":
+        pre = [] if src.kind == "image" else clip_prefilters(clip, src, work, ss=src_in, t=dur_src, tracks=s.tracks,
+                                                              project_root=s.project_root)
+        v = ["[0:v]" + ",".join([*pre, f"setpts=(PTS-STARTPTS)/{clip.speed:.5f}", fps_filter(clip, fps)])]
+        v += _frame_chain(edit, clip, s, work, iw, ih, content_dur)
+        if pad_h or pad_t:
+            v.append(f"tpad=start_mode=clone:start_duration={pad_h:.4f}:stop_mode=clone:stop_duration={pad_t:.4f}")
+        vgraph = ",".join(v) + "[vout]"
 
     a_in = "[0:a]" if has_audio else "[1:a]"
     a = [f"{a_in}asetpts=PTS-STARTPTS", "aresample=48000", "aformat=channel_layouts=stereo"]

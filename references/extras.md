@@ -34,7 +34,10 @@ Write per platform from the transcript: title (YouTube ≤ 70 chars, curiosity +
 and niche), pinned comment/CTA. Bangla audiences: offer Bangla + English versions. Save to
 `edit/render/post.md`.
 
-## AI voiceover and voice clone (ElevenLabs, optional)
+## AI voiceover and voice clone
+
+Free offline and online voices, Bangla, and the owner's cloned voice: `references/voices.md`
+(`vedit voice ...`). ElevenLabs (paid) stays available directly:
 ```
 vedit tts voices
 vedit tts speak "Script text…" --voice <name-or-id> --language bn --out edit/assets/vo/vo1.mp3

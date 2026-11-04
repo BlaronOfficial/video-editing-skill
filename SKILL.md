@@ -49,6 +49,9 @@ there. Details and the Claude-app setup: `references/setup.md`.
    file this job made. Before long encodes, run with `--dry-run` and read the plan.
 11. **Read the source notes** (`vedit project info`, `vedit footage check`): HDR, Log, variable frame rate,
    black bars and the device change what you can promise (`references/footage.md`).
+12. **Voices carry terms.** Say each voice's commercial flag when you pick it (`vedit voice list`); clone
+   only the owner or a speaker who agreed in words (`--consent`), and never pass a clone off as a real
+   recording.
 
 ## End-of-job report
 
@@ -89,7 +92,7 @@ to run, so work outside Claude Code's plan mode.)
 | 6. Critique | Watch and listen to a preview against the excellence checklist; check your own words; check the destination's limits and safe zones; fix; turn real judgement calls into suggestion cards | `vedit render --preview` · `vedit watch --render` · `vedit qa --platform <p>` · `vedit text check` · `vedit suggest add` |
 | 7. Studio | Build previews, publish/sync the Studio, answer "Send to Claude" notes by applying the owner's ops | `vedit studio build/docs/apply` · `references/studio.md` |
 | 8. Execute | After approval: graphics, custom FX, final render, QA (look at the sheets), agreed hand-offs (Execute writes the file packages; CapCut and Resolve Studio import are yours to run), thumbnail, post copy | `vedit execute` · `vedit qa` · `vedit handoff make` · `vedit capcut build` · `vedit resolve import` |
-| 9. Learn | Turn feedback into rules, log which routes worked, learn from the owner's edits in CapCut or any NLE (and bring their trims back), index the footage for later | `vedit learn note` · `vedit route log` · `vedit capcut diff --learn` · `vedit handoff diff --learn` · `vedit memory index` |
+| 9. Learn | Turn feedback into rules, log which routes worked, learn from the owner's edits in CapCut or any NLE (and bring their trims back), index the footage for later; after publishing, read how the video held viewers | `vedit learn note` · `vedit route log` · `vedit capcut diff --learn` · `vedit handoff diff --learn` · `vedit memory index` · `vedit publish link` · `vedit analytics report/learn` |
 
 Custom compositions written for the specific video (HTML/GSAP, SVG, Canvas, Three.js, shaders) and custom
 FX are how edits go from good to excellent. Templates are a starting point, not a ceiling.
@@ -126,4 +129,7 @@ FX are how edits go from good to excellent. Templates are a starting point, not 
 | Clean-up and time FX: stabilize, denoise, redact, straighten, 360, speed ramps, freeze, reverse | `references/cleanup.md` |
 | VFX and 3D: 3D templates, tracking, follow labels, face blur, screen replacement, cut-outs, depth, camera FX | `references/vfx.md` |
 | Blender 3D renders (optional add-on) | `references/blender.md` |
+| Voiceover and voices: offline, Edge, Bangla, the owner's cloned voice, licences | `references/voices.md` |
+| Where the engine runs: Claude Code, the Claude app (MCP, VM), lite, macOS; launcher skill | `references/environments.md` |
+| How published videos performed (YouTube retention mapped to the edit) | `references/analytics.md` |
 | Setup, add-ons, models, MCP, Claude app, troubleshooting | `references/setup.md` |

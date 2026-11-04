@@ -27,6 +27,15 @@ def cache_dir() -> Path:
     return path
 
 
+def tools_dir() -> Path:
+    """Isolated tool venvs (earshot, claude-real-video, otio, voice, ...). Windows keeps `.cache/tools`; other
+    systems get `.cache/tools-<os>`: the same skill folder is mounted into the Claude app's Linux VM, and a venv
+    only runs on the system that made it (sharing one folder would make each side rebuild the other's)."""
+    path = cache_dir() / ("tools" if IS_WINDOWS else f"tools-{platform.system().lower()}")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def fonts_dir() -> Path:
     path = cache_dir() / "fonts"
     path.mkdir(parents=True, exist_ok=True)

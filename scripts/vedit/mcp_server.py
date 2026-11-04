@@ -212,5 +212,47 @@ def sfx_preview(sound_id: str, duration: float | None = None, pitch: str | None 
     return base64.b64encode(out.read_bytes()).decode("ascii")
 
 
+@server.tool()
+def read_doc(name: str = "SKILL.md") -> str:
+    """The skill's own instructions: "SKILL.md" first, then any reference it points to ("vfx.md",
+    "references/voices.md"). Read these before working, exactly as Claude Code would."""
+    from .paths import SKILL_ROOT
+    rel = name.replace("\\", "/").lstrip("/")
+    if rel != "SKILL.md" and not rel.startswith("references/"):
+        rel = f"references/{rel}"
+    if not rel.endswith(".md"):
+        rel += ".md"
+    path = (SKILL_ROOT / rel).resolve()
+    if SKILL_ROOT.resolve() not in path.parents or not path.exists():
+        return f"ERROR: no doc '{name}'. Start with SKILL.md; references: " + ", ".join(
+            sorted(p.name for p in (SKILL_ROOT / "references").glob("*.md")))
+    return path.read_text(encoding="utf-8")
+
+
+@server.tool()
+def view_image(path: str, max_side: int = 1600):
+    """Look at a PNG/JPG on this computer (QA sheets, frames, track sheets, thumbnails). Returns the image."""
+    import io as _io
+    from pathlib import Path
+    from PIL import Image as PILImage
+    from mcp.server.mcpserver import Image
+    p = Path(path)
+    if not p.exists() or p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+        return f"ERROR: not an image file: {path}"
+    im = PILImage.open(p).convert("RGB")
+    im.thumbnail((max_side, max_side))
+    buf = _io.BytesIO()
+    im.save(buf, format="JPEG", quality=88)
+    return Image(data=buf.getvalue(), format="jpeg")
+
+
+@server.tool()
+def env() -> str:
+    """Where the engine runs and what works there (Windows full, Claude-app VM, macOS untested)."""
+    return _run(["env", "--brief"])
+
+
 def main() -> None:
+    import os
+    os.environ.setdefault("VEDIT_SURFACE", "claude-app-mcp")     # `vedit env` reports this route
     server.run()

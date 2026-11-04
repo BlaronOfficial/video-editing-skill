@@ -132,7 +132,7 @@ def transcript_words(path: str | Path) -> list[dict]:
 
 
 def build_chunks(edit: Edit) -> list[CaptionChunk]:
-    """Map every kept word through the main track and chunk it with the edit's caption style."""
+    """Map every kept word through the main track (and voiceover clips) and chunk it with the caption style."""
     style = resolve_style(edit.captions.style, edit.captions.overrides)
     cap = edit.captions
     words: list[Word] = []
@@ -149,6 +149,21 @@ def build_chunks(edit: Edit) -> list[CaptionChunk]:
                     continue
                 s = (clip.start or 0) + (max(w["s"], clip.src_in) - clip.src_in) / clip.speed
                 e = (clip.start or 0) + (min(w["e"], clip.src_out) - clip.src_in) / clip.speed
+                words.append(Word(w=text.strip(), s=round(s, 3), e=round(max(e, s + 0.05), 3), k=key))
+    for a in edit.audio:                     # voiceover clips over footage or b-roll speak too
+        src = edit.sources.get(a.source)
+        if a.role != "vo" or not a.enabled or not src or not src.transcript:
+            continue
+        end = a.src_out if a.src_out is not None else float("inf")
+        for w in transcript_words(src.transcript):
+            mid = (w["s"] + w["e"]) / 2
+            if a.src_in <= mid <= end:
+                key = word_key(a.source, w["s"])
+                text = cap.word_fixes.get(key, w["w"].strip())
+                if not text.strip():
+                    continue
+                s = a.start + (w["s"] - a.src_in)
+                e = a.start + (min(w["e"], end) - a.src_in)
                 words.append(Word(w=text.strip(), s=round(s, 3), e=round(max(e, s + 0.05), 3), k=key))
     words.sort(key=lambda w: w.s)
     max_words = cap.max_words or style["max_words"]

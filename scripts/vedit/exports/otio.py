@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 
 from ..addons import tool_python
-from ..paths import cache_dir
+from ..paths import cache_dir, tools_dir
 from ..util import VeditError, read_json, run, write_json
 from . import Handoff, rate
 
@@ -29,7 +29,7 @@ def setup() -> dict:
     uv = shutil.which("uv")
     if not uv:
         raise VeditError("uv is required (https://docs.astral.sh/uv/)")
-    venv = cache_dir() / "tools" / "otio" / "venv"
+    venv = tools_dir() / "otio" / "venv"
     py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not py.exists():
         run([uv, "venv", "--python", "3.12", str(venv)], timeout=900)

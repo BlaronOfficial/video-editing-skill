@@ -26,3 +26,6 @@ desktop.ini
 # Test footage and renders made while developing the skill
 /tests/footage/
 /tests/out/
+
+# Claude-app launcher zips are built per machine (they carry the local skill path)
+/app/claude-app/*.zip

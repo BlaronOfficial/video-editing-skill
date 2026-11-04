@@ -33,7 +33,7 @@ import numpy as np
 
 from . import addons
 from .media import ffmpeg
-from .paths import SKILL_ROOT, cache_dir, personal_dir
+from .paths import SKILL_ROOT, cache_dir, personal_dir, tools_dir
 from .timeline import Anchor, AudioClip, Edit, SfxRef, Source
 from .util import VeditError, read_json, run, write_json
 
@@ -135,7 +135,7 @@ def setup(ears: bool = False) -> dict:
     uv = shutil.which("uv")
     if not uv:
         raise VeditError("uv is required (https://docs.astral.sh/uv/)")
-    home = cache_dir() / "tools" / "earshot"
+    home = tools_dir() / "earshot"
     venv = home / "venv"
     py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not py.exists():

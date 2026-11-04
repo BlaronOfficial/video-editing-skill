@@ -24,7 +24,7 @@ from pathlib import Path
 
 from . import addons
 from .media import ffmpeg, ffprobe, probe
-from .paths import cache_dir, personal_dir
+from .paths import cache_dir, personal_dir, tools_dir
 from .util import VeditError, read_json, run, write_json
 
 CRV_PIN = ("claude-real-video[speakers] @ git+https://github.com/HUANGCHIHHUNGLeo/claude-real-video"
@@ -61,7 +61,7 @@ def setup() -> dict:
     uv = shutil.which("uv")
     if not uv:
         raise VeditError("uv is required (https://docs.astral.sh/uv/)")
-    venv = cache_dir() / "tools" / "crv" / "venv"
+    venv = tools_dir() / "crv" / "venv"
     py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not py.exists():
         run([uv, "venv", "--python", "3.12", str(venv)], timeout=900)

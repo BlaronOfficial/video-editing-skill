@@ -45,6 +45,11 @@ purpose). Ask the owner, then `vedit models get <id>`; an interrupted download r
 | modnet | 26 MB | person cut-outs (text behind people, background swap) | Apache-2.0 |
 | depth_small | 27 MB | 3D photos, depth of field | Apache-2.0 |
 | birefnet_lite | 224 MB | best object cut-outs for stills (optional) | MIT |
+| kokoro_multi | 132 MB | offline voices, English + 7 languages | Apache-2.0 |
+| kokoro_fp32 | 326 MB | the same voices 3-4x faster on CPU (optional) | Apache-2.0 |
+| bn_coqui, bn_mimic3 | 108 / 80 MB | offline Bangla voices | IIT Madras data (verify) / CC BY-SA |
+| pocket_tts | 98 MB | the owner's voice from a 15 s clip (English) | CC BY 4.0 + consent-only terms (verify) |
+| openvoice_v2 | 131 MB | the owner's voice in any language (with `vedit setup openvoice`) | MIT |
 
 CPU inference uses 8 threads by default (faster than all cores on hybrid CPUs); `VEDIT_ORT_THREADS`
 overrides. `vedit vfx check` shows what VFX can run here.
@@ -71,8 +76,8 @@ In the Claude app (chat) the engine runs on the owner's computer through the rem
 VM with the owner's folders mounted under `~/mnt/`. Request access to the skill folder and the footage
 folder in one call, then run `"$HOME/mnt/<skill folder>/vedit" <command>`. Windows-only steps (CapCut,
 screen control, installing fonts for Windows apps) need Claude Code on Windows; everything else works,
-and the Studio artifact is the natural way to show work there. An official launcher skill for the Claude
-app ships in phase 5.
+and the Studio artifact is the natural way to show work there. The official launcher skill for the Claude
+app and the local MCP registration: `references/environments.md` (`vedit env`).
 
 ## Troubleshooting
 | Symptom | Fix |

@@ -141,7 +141,7 @@ pipelines; standalone free core, everything paid or proprietary optional. Full p
 | VFX / 3D | Three.js, Blender (installed: 5.2), Fusion (Studio), Higgsfield; tracking, cutout, depth (phase 4, built 2026-11-04) |
 | Sound / eyes | earshot full (kits + ears), claude-real-video watching, speakers, memory, link ingest (phase 2) |
 | Writing pass | English only (from blader/humanizer MIT rules; humanizer-cli was a malware lure, not used) |
-| Learning | Studio decisions, editor diffs, chat rules, route outcomes, YouTube analytics (phase 5) |
+| Learning | Studio decisions, editor diffs, chat rules, route outcomes, YouTube analytics (phase 5, built 2026-11-04) |
 
 ### Phase 1 status (2026-10-28): standalone core, director layer, modes, Studio
 
@@ -320,3 +320,66 @@ test_phase3 35/35, test_port 50/50):
   250 ms vs 409 ms default, 1115 ms with all 18); Blender EEVEE ~2 s per frame at 540p.
 - Not tested: Fusion (needs Resolve Studio); Studio UI clicks of the new controls (JS syntax and
   bake/ops parity checked; driving the owner's browser needs their OK).
+
+### Phase 5 status (2026-11-04): voices, environments, performance learning
+
+Built:
+- **Voices** (`scripts/vedit/voice/`, `vedit voice list|say|vo|clone|compare`): one interface over Kokoro
+  (54 offline voices, English + 7 languages; full-precision weights optional and 3-4x faster here), offline
+  Bangla (Coqui VITS female, Mimic 3 multi-speaker), Microsoft Edge online voices (best free Bangla, exact
+  word times), Pocket TTS cloning from a 15 s reference, OpenVoice V2 tone conversion (the owner's voice in
+  any language, e.g. Edge Bangla moved to their timbre) and ElevenLabs. Sentences are spoken one by one with
+  pauses vedit places, so sentence boundaries are exact; word times come from the service, from Whisper
+  aligned to the script (English) or are spread inside each sentence. Bangla numbers are spelled for the
+  offline Bangla voices. Every voice carries its licence and a commercial flag; clones need the speaker's
+  consent in words, stored with the voice. Tool venvs: `voice` (sherpa-onnx 1.13.8 + edge-tts) and
+  `openvoice` (PyTorch CPU). Voiceovers go into an edit as the main track (faceless; the renderer now draws
+  a canvas-colour picture for audio-only main clips) or as VO clips whose words join the captions (engine
+  and Studio JS alike).
+- **Environments** (`vedit env`, `references/environments.md`): surface detection (Claude Code on Windows,
+  Claude app via local MCP, Claude app VM, macOS, lite), Claude desktop app MCP registration that merges
+  into the Microsoft Store build's config under `%LOCALAPPDATA%\Claude-Data` (backup, idempotent, refuses
+  while the app is open because it rewrites its config from memory), new MCP tools `read_doc`, `view_image`,
+  `env`, and the official Claude-app launcher skill (`app/claude-app/video-editing/SKILL.md`, zip via
+  `vedit env launcher`; routes: MCP tools, remote device tools, lite). Tool venvs are per OS
+  (`.cache/tools-<os>` off Windows) and the `vedit` shell launcher keeps a VM-local engine venv when the
+  folder is shared with Windows, so neither side rebuilds the other's.
+- **Performance learning** (`vedit publish link`, `vedit analytics auth|pull|import|report|learn`,
+  `references/analytics.md`): retention from YouTube Studio CSV exports or the YouTube Analytics API through
+  the owner's own OAuth client (PKCE, loopback; they sign in), mapped onto the edit: drops and rewatches with
+  what was on screen and being said, element lifts per graphic / b-roll / sound, a chart PNG; `learn` feeds
+  the profile (`performance`: median hook and average retention, drop causes) and nudges routes in
+  `vedit route plan` by measured lift (2+ observations, at most 2 points).
+
+Found on the way:
+- sherpa-onnx 2.0 removed its built-in espeak-ng: Kokoro silently skipped English words missing from its
+  lexicon (names, brands), could not speak its other languages, and Piper/Mimic 3 voices failed. Pinned
+  1.13.8 (the last release with espeak inside, already with Pocket TTS).
+- Giving Whisper the script as its prompt made it skip and invent words (it treats a prompt as text already
+  said); alignment uses no prompt (100 % of words matched on Kokoro English).
+- The int8 Kokoro export ran 2.6-3.5x slower than real time on this CPU; the fp32 export runs at 0.87x.
+
+Verified (`tests/test_phase5.py`: 38/38; regressions test_v2 22/22, test_phase2 --render 24/24, test_phase3
+35/35, test_port 50/50, test_phase4 42/42 (Blender checks unchanged since phase 4)):
+- Kokoro English re-transcribes word for word (WER 0.00) with Whisper-aligned times (100 % matched); names
+  outside the lexicon are spoken; the Spanish voice speaks Spanish (WER 0.00).
+- Bangla: Edge, Coqui and Mimic 3 each give two exact sentences and a time for every word; Whisper reads
+  them back at character error rates of about 0.14 (Edge), 0.32 (Coqui) and 0.29 (Mimic 3); the placed pause
+  between sentences is silent.
+- Cloning: no consent, no clone; Pocket TTS lands on the target speaker (similarity 0.58 vs 0.12 for
+  another voice); OpenVoice moves Edge Bangla towards the target (0.45 vs 0.39 for the base voice); a clone
+  over an online base voice inherits the stricter licence flag.
+- A faceless Bangla voiceover project renders at the voice's length (8.07 s) with audible voice (-15 LUFS)
+  and captions drawn from it; the Studio's JS builds the same voiceover captions as the engine; a VO clip
+  over footage adds its words at its place.
+- Environments: surface and engine readiness reported; the MCP config merge keeps other settings and
+  servers, backs up, is idempotent and will not replace someone else's server; the registered command
+  serves 24 tools over stdio, including docs and images; the launcher zip carries this PC's path; synced
+  hand-made launchers are told apart from the official one.
+- Analytics: a drop planted at 40-45 % of the e2e edit is found at 12.58-14.15 s (planted 12.6-14.1 s) with
+  the words being said; a planted rewatch at 22.0 s; m:ss CSVs read; the API pull works against mocked Google
+  endpoints; the OAuth flow (PKCE, loopback) completes against a mocked token endpoint; learning puts
+  performance into the profile and measured lifts into the route planner.
+- Not tested live: the owner's YouTube account (needs their OAuth client), the Claude app with the MCP entry
+  (the app must be closed to register it; the owner restarts it), the launcher in the Claude app (the owner
+  uploads the zip), the Studio player with an audio-only main track, macOS.

@@ -179,6 +179,24 @@ export function buildChunks(d, words, style) {
       }
     }
   }
+  for (const a of d.audio || []) {          // voiceover clips speak too (captions.py build_chunks)
+    const src = d.sources[a.source] || {};
+    const ws = words[a.source];
+    if (a.role !== "vo" || a.enabled === false || !src.transcript || !ws) continue;
+    const end = a.src_out ?? Infinity;
+    const sin = a.src_in || 0;
+    for (const w of ws) {
+      const mid = (w[0] + w[1]) / 2;
+      if (sin <= mid && mid <= end) {
+        const key = w[4] || wordKey(a.source, w[0]);
+        const text = key in fixes ? fixes[key] : w[2];
+        if (!String(text).trim()) continue;
+        const s = (a.start || 0) + (w[0] - sin);
+        const e = (a.start || 0) + (Math.min(w[1], end) - sin);
+        timed.push({ w: String(text).trim(), s: r3(s), e: r3(Math.max(e, s + 0.05)), k: key });
+      }
+    }
+  }
   timed.sort((a, b) => a.s - b.s);
   const chunks = chunkWords(timed, cap.max_words || style.max_words || 3, cap.max_chars || style.max_chars || 22, style.mode || "karaoke");
   const total = duration(d);

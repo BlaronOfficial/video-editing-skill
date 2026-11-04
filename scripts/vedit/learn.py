@@ -76,7 +76,22 @@ def rebuild() -> dict:
     styles: Counter = Counter()
     directions: Counter = Counter()
     fixes = 0
+    perf: dict[str, list] = defaultdict(list)
+    drop_causes: Counter = Counter()
+    lifts: dict[str, list] = defaultdict(list)
     for ev in events():
+        if ev["kind"] == "performance":
+            for key in ("at_3s", "at_5s", "average", "end"):
+                if ev.get(key) is not None:
+                    perf[key].append(ev[key])
+            for dr in ev.get("drops", []):
+                for cause, on in (("pause", (dr.get("pause") or 0) >= 0.7), ("graphic on screen", dr.get("graphics")),
+                                  ("b-roll on screen", dr.get("broll")), ("near a cut", dr.get("cut"))):
+                    if on:
+                        drop_causes[cause] += 1
+            for x in ev.get("lifts", []):
+                lifts[f"{x['kind']}:{x['name']}"].append(x["lift"])
+            continue
         scope = ev.get("scope") or {}
         keys = ["global"] + [f"{k}:{v}" for k, v in scope.items() if v]
         if ev["kind"] != "studio":
@@ -117,6 +132,11 @@ def rebuild() -> dict:
         "directions_chosen": [d for d, _ in directions.most_common(6)],
         "caption_word_fixes": fixes,
         "routes": read_json(_dir() / "routes.json", default={}) or {},
+        "performance": {"videos": len(perf.get("average", [])),
+                        **{f"{k}_median": median(v) for k, v in perf.items()},
+                        "drop_causes": dict(drop_causes.most_common(6)),
+                        "lifts": {k: round(sum(v) / len(v), 2) for k, v in sorted(lifts.items(), key=lambda kv: -len(kv[1]))[:20]},
+                        } if perf else {},
     }
     write_json(personal_dir() / "profile.json", profile)
     return profile

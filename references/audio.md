@@ -97,7 +97,7 @@ breath in the middle of a thought stays: the natural default for interviews and 
 ## Voiceover
 Recorded VO: add as a source with `--origin vo`, transcribe it, cut it like A-roll (main track can be an
 audio source with b-roll/graphics above), or place it as `role: "vo"`.
-AI voiceover / voice clone: `references/extras.md`.
+AI voiceover / voice clone: `references/voices.md` (`vedit voice vo <p> --voice <id> --file script.txt`).
 
 ## Loudness targets
 -14 LUFS integrated, -1.5 dBTP (default for all major platforms). Podcasts/Spotify video: -16 LUFS

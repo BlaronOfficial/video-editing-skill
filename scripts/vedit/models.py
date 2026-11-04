@@ -78,6 +78,7 @@ def path_of(model_id: str) -> Path:
 def _load_optional() -> None:
     """Feature modules register their models on import; load them so listings are complete."""
     from .vfx import depth, matte, track  # noqa: F401
+    from .voice import catalog  # noqa: F401
 
 
 def _get(model_id: str) -> Model:

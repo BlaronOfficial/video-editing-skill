@@ -19,7 +19,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .paths import IS_WINDOWS, cache_dir, personal_dir
+from .paths import IS_WINDOWS, cache_dir, personal_dir, tools_dir
 from .util import VeditError, read_json, run, write_json
 
 BINARY_EXT = {".exe", ".dll", ".so", ".dylib", ".msi", ".scr", ".com", ".bin", ".appimage", ".pkg", ".dmg", ".jar"}
@@ -36,7 +36,7 @@ LICENCES = {"MIT": r"\bMIT License\b|Permission is hereby granted, free of charg
 
 
 def _tools_dir() -> Path:
-    path = cache_dir() / "tools"
+    path = tools_dir()
     path.mkdir(parents=True, exist_ok=True)
     return path
 

@@ -52,8 +52,11 @@ def plan(need: str, *, caps: dict | None = None) -> list[dict]:
             score += 4 * (kept / (kept + rejected) - 0.5)
         fails = sum(outcomes.get(req.split("|")[0], {}).get("fail", 0) for req in r.get("requires", []))
         score -= min(3, fails)
+        from .analytics import route_bonus
+        bonus, perf = route_bonus(need, r["id"])        # retention measured on published videos
+        score += bonus
         ranked.append({**r, "available": not missing, "missing": missing, "score": round(score, 2),
-                       "history": s or None, "needs_ask": r.get("cost") in ("credits", "paid")})
+                       "history": s or None, "performance": perf, "needs_ask": r.get("cost") in ("credits", "paid")})
     ranked.sort(key=lambda x: (not x["available"], -x["score"]))
     return ranked
 

@@ -622,18 +622,20 @@
   },
   {
    "id": "offline_tts",
-   "label": "Offline neural TTS (Kokoro/Piper EN; Bangla model if licence allows)",
-   "requires": [],
+   "label": "Offline voices: Kokoro (English + 7 languages), offline Bangla (two models)",
+   "requires": [
+    "model:kokoro_multi|model:bn_coqui|model:bn_mimic3"
+   ],
    "cost": "free",
    "quality": 3,
    "speed": 4,
-   "licence": "check",
+   "licence": "own",
    "privacy": "local",
-   "how": "phase 5."
+   "how": "`vedit voice vo <p> --voice kokoro:af_heart|bn_coqui:female|bn_mimic3:3 --file script.txt` (references/voices.md); check each voice's commercial flag."
   },
   {
    "id": "edge_tts",
-   "label": "Edge TTS (free online, bn-BD/bn-IN voices)",
+   "label": "Microsoft Edge voices (best free Bangla: bn-BD Nabanita / Pradeep), online",
    "requires": [
     "web:"
    ],
@@ -642,7 +644,20 @@
    "speed": 4,
    "licence": "check",
    "privacy": "uploads",
-   "how": "phase 5; unofficial endpoint."
+   "how": "`vedit voice vo <p> --voice edge:bn-BD-PradeepNeural`; exact word timings; the script goes to Microsoft; commercial terms unclear (flagged)."
+  },
+  {
+   "id": "voice_clone_local",
+   "label": "The owner's cloned voice, offline (Pocket TTS English; OpenVoice for any language)",
+   "requires": [
+    "model:pocket_tts|model:openvoice_v2"
+   ],
+   "cost": "free",
+   "quality": 4,
+   "speed": 3,
+   "licence": "check",
+   "privacy": "local",
+   "how": "`vedit voice clone <name> --files ... --consent ...` once, then pocket:<name> or openvoice:<name>@edge:bn-BD-PradeepNeural. Consent in words, always."
   },
   {
    "id": "elevenlabs",

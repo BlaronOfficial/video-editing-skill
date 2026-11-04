@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import config
-from .paths import IS_MAC, IS_WINDOWS, SKILL_ROOT, cache_dir, mg_dir, personal_dir
+from .paths import IS_MAC, IS_WINDOWS, SKILL_ROOT, cache_dir, mg_dir, personal_dir, tools_dir
 
 
 @dataclass
@@ -94,7 +94,7 @@ def find_blender() -> Path | None:
 
 def tool_python(name: str) -> Path | None:
     """Python of an isolated tool venv under .cache/tools/<name>/ (heavy or GPL tools live there)."""
-    base = cache_dir() / "tools" / name / "venv"
+    base = tools_dir() / name / "venv"
     exe = base / ("Scripts/python.exe" if IS_WINDOWS else "bin/python")
     return exe if exe.exists() else None
 
@@ -164,6 +164,16 @@ def _crv() -> tuple[bool, str]:
     return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup crv` (~100 MB; native fallback without it)")
 
 
+def _voice_tools() -> tuple[bool, str]:
+    py = tool_python("voice")
+    return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup voice` (~20 MB)")
+
+
+def _openvoice() -> tuple[bool, str]:
+    py = tool_python("openvoice")
+    return (True, f"tool venv {py.parent.parent}") if py else (False, "`vedit setup openvoice` (~0.8 GB; ask first)")
+
+
 def _otio() -> tuple[bool, str]:
     py = tool_python("otio")
     return (True, f"tool venv {py.parent.parent}") if py else (False, "installs on first use (~10 MB): `vedit setup otio`")
@@ -197,6 +207,11 @@ ADDONS: list[Addon] = [
           "MIT (yt-dlp Unlicense, sherpa-onnx Apache-2.0)", 100, "`vedit setup crv`", _crv),
     Addon("otio", "OpenTimelineIO + adapters", "tool", "free", "Premiere XML, OTIO, EDL, Kdenlive hand-offs; reading "
           "re-exports back", "Apache-2.0 (Kdenlive adapter MIT)", 10, "`vedit setup otio`", _otio),
+    Addon("voice", "Voice tools (sherpa-onnx, edge-tts)", "tool", "free",
+          "offline voices (Kokoro, Bangla), Edge online voices, Pocket TTS clones", "Apache-2.0 / LGPL-3.0 (separate venv)",
+          20, "`vedit setup voice`", _voice_tools),
+    Addon("openvoice", "OpenVoice V2 converter", "tool", "free", "the owner's voice in any language (tone conversion)",
+          "MIT (PyTorch CPU in its own venv)", 800, "`vedit setup openvoice` (ask first)", _openvoice),
     Addon("remotion", "Remotion", "engine", "freemium", "React motion graphics",
           "Remotion licence (free for individuals / teams up to 3)", 150, "auto on first use", _remotion),
     Addon("elevenlabs", "ElevenLabs", "service", "paid", "Scribe transcription, premium TTS, voice clone",

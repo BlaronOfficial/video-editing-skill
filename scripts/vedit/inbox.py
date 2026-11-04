@@ -9,6 +9,8 @@ folder is the owner's: files are copied, not moved, unless --move.
 
 from __future__ import annotations
 
+from .paths import tools_dir
+
 import hashlib
 import os
 import re
@@ -176,7 +178,7 @@ def vectorize(image: Path, out: Path | None = None, *, colors: int = 6) -> Path:
         uv = shutil.which("uv")
         if not uv:
             raise VeditError("uv is required")
-        venv = cache_dir() / "tools" / "vtracer" / "venv"
+        venv = tools_dir() / "vtracer" / "venv"
         run([uv, "venv", "--python", "3.12", str(venv)], timeout=600)
         py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
         run([uv, "pip", "install", "--python", str(py), "vtracer>=0.6"], timeout=900)

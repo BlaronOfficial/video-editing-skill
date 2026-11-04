@@ -25,3 +25,10 @@ How to use it:
 - When the owner corrects you in chat ("too choppy"), fix it, then save it as a rule with the right scope,
   and say so in one line.
 - Never store secrets or other people's data here; the profile is the owner's taste, nothing else.
+
+## Performance (published videos)
+
+After the owner publishes, `vedit publish link` + `vedit analytics import|pull`, `report`, `learn`
+(`references/analytics.md`). Retention drops and rewatches are tied to what was on screen; each graphic,
+b-roll shot and sound gets a measured lift that nudges its route in `vedit route plan`, and the profile keeps
+the median hook and the usual drop causes.
