@@ -526,3 +526,14 @@ Review and release checks (2026-11-05, with the render tests still waiting for m
 - A fresh clone of `v2` (4 MB) set up in 46 s from the local caches (uv, npm; fonts copied in) and doctor
   said READY. In the clone, every style demo, both templates and the 60 s example built, and the beat map
   read a 120 BPM click as 120.0 BPM with 10 bars.
+
+After the release (2026-11-07):
+- `.gitignore` also covers `.env` files, Remotion's lockfile (made on first use), Claude Code's local settings
+  and macOS `._*` files.
+- Setup, updates and the launchers install from the shipped lockfiles without rewriting them: `npm ci` for the
+  renderer, `uv sync --frozen`, and `uv run --frozen` in `vedit`, `vedit.cmd` and the Claude-app entry. Before
+  this, an npm or uv of another version could rewrite `mg/renderer/package-lock.json` or `scripts/uv.lock`,
+  and the changed tracked file blocked `vedit update`. Now an update puts back a lockfile that something else
+  rewrote (an older vedit, npm or uv by hand), and any other local edit still stops it.
+- `vedit update`'s npm step and Remotion's first-use install called plain `npm`, which Windows can't start
+  without its `.cmd`; fixed.

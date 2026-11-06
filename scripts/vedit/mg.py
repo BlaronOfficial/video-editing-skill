@@ -97,11 +97,11 @@ def still(comp: Path, out_png: Path, *, width: int, height: int, t: float, data:
 def render_remotion(entry: Path, composition: str, out: Path, *, props: dict, width: int, height: int, fps: float,
                     duration: float, alpha: bool = True) -> Path:
     project = mg_dir() / "remotion"
+    npm, npx = ("npm.cmd", "npx.cmd") if IS_WINDOWS else ("npm", "npx")
     if not (project / "node_modules").exists():
-        run(["npm", "install", "--no-audit", "--no-fund"], cwd=project, timeout=1800)
+        run([npm, "install", "--no-audit", "--no-fund"], cwd=project, timeout=1800)
     props_file = out.with_suffix(".props.json")
     write_json(props_file, {**props, "width": width, "height": height, "fps": fps, "durationInFrames": round(duration * fps)})
-    npx = "npx.cmd" if IS_WINDOWS else "npx"
     cmd = [npx, "remotion", "render", str(entry), composition, str(out), f"--props={props_file}",
            f"--width={width}", f"--height={height}"]
     if alpha:

@@ -82,7 +82,8 @@ def install_renderer() -> str:
     npm = which("npm")
     if not npm:
         raise VeditError("npm not found. Install Node.js 20+ (https://nodejs.org) and rerun `vedit setup`.")
-    run([npm, "install", "--no-audit", "--no-fund"], cwd=mg_dir() / "renderer", timeout=1800)
+    # ci installs exactly the shipped lockfile and never rewrites it (a changed tracked file blocks `vedit update`)
+    run([npm, "ci", "--no-audit", "--no-fund"], cwd=mg_dir() / "renderer", timeout=1800)
     return str(mg_dir() / "renderer" / "node_modules")
 
 

@@ -8,9 +8,13 @@ These need synthetic media in `tests/footage/` (git-ignored). Generate it with f
 
 Run from this folder:
 
-    uv run --project ../scripts python smoke_capcut.py            # build only (prints tracks + warnings)
-    uv run --project ../scripts python smoke_capcut.py --write    # write vedit_test_01 into CapCut (CapCut closed)
-    uv run --project ../scripts python smoke_render.py            # 540p preview -> out/preview.mp4
+    uv run --frozen --project ../scripts python smoke_capcut.py            # build only (prints tracks + warnings)
+    uv run --frozen --project ../scripts python smoke_capcut.py --write    # write vedit_test_01 into CapCut (CapCut closed)
+    uv run --frozen --project ../scripts python smoke_render.py            # 540p preview -> out/preview.mp4
+
+Setup, updates and the launchers install from the lockfiles as shipped (`uv --frozen`, `npm ci`). After changing
+`scripts/pyproject.toml` or `mg/renderer/package.json`, refresh the lockfile (`uv lock --project scripts`, or
+`npm install` in `mg/renderer`) and commit it with the change.
 
 v2 phase checks (from the skill root, on copies of the E2E project in `tests/footage/e2e`):
 

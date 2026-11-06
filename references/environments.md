@@ -17,7 +17,7 @@ vedit env mcp                 # status and the entry it would write
 vedit env mcp --install       # ask the owner first: edits the app's config (backup kept), then restart the app
 ```
 The Microsoft Store build keeps its config in `%LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json`
-(not `%APPDATA%\Claude`); `vedit env mcp` finds it. The entry runs `uv run --project <skill>\scripts vedit mcp`
+(not `%APPDATA%\Claude`); `vedit env mcp` finds it. The entry runs `uv run --frozen --project <skill>\scripts vedit mcp`
 (no batch file, quiet stdio). Only `mcpServers.vedit` is added or updated; everything else is kept. The app must
 be closed while this runs: it keeps its config in memory and writes it back when a setting changes, which
 drops an entry added while it was open (`--install` refuses while it runs). So the owner quits the app fully

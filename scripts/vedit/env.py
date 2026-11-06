@@ -82,7 +82,7 @@ def mcp_entry() -> dict:
     if not uv:
         raise VeditError("uv is required to run vedit (https://docs.astral.sh/uv/)")
     return {"command": str(Path(uv).resolve()),
-            "args": ["run", "--quiet", "--project", str(SKILL_ROOT / "scripts"), "vedit", "mcp"],
+            "args": ["run", "--frozen", "--quiet", "--project", str(SKILL_ROOT / "scripts"), "vedit", "mcp"],
             "env": {"PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}}
 
 

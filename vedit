@@ -18,4 +18,6 @@ case "$(uname -s)" in
       esac
     fi ;;
 esac
-exec uv run --quiet --project "$DIR/scripts" vedit "$@"
+# --frozen: use scripts/uv.lock as shipped. Re-locking would change a tracked file (from the VM, the owner's Windows
+# copy too), and that blocks `vedit update`.
+exec uv run --frozen --quiet --project "$DIR/scripts" vedit "$@"

@@ -63,7 +63,7 @@ def check() -> dict:
         import faster_whisper  # noqa: F401
         add("faster-whisper", True, "local transcription available")
     except Exception:
-        add("faster-whisper", False, "", "Run `uv sync --project scripts`")
+        add("faster-whisper", False, "", "Run `uv sync --frozen --project scripts`")
     whisper_cache = list((SKILL_ROOT / ".cache" / "whisper").glob("models--*")) if (SKILL_ROOT / ".cache" / "whisper").exists() else []
     add("whisper model cached", bool(whisper_cache), ", ".join(p.name.split("--")[-1] for p in whisper_cache),
         "First transcription downloads it (~1.5 GB for large-v3), or run `vedit setup whisper`", required=False)
