@@ -5,6 +5,10 @@
 # Downloaded fonts, models, renderer caches
 /.cache/
 
+# Secrets: API keys go in environment variables or personal/secrets.json, never in tracked files
+.env
+.env.*
+
 # Python
 __pycache__/
 *.py[cod]
@@ -14,14 +18,20 @@ __pycache__/
 
 # Node
 node_modules/
+# Remotion installs on first use, so its lockfile is made on each machine
+/mg/remotion/package-lock.json
 
 # OS / editor
 .DS_Store
+._*
 Thumbs.db
 desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Claude Code's per-machine permissions, made when it runs inside the skill folder
+/.claude/settings.local.json
 
 # Test footage and renders made while developing the skill
 /tests/footage/
